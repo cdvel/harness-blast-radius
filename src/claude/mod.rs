@@ -6,5 +6,7 @@
 
 pub mod load;
 pub mod paths;
+pub mod resolve;
 
 pub use paths::Paths;
+pub use resolve::{Resolved, resolve};
