@@ -4,6 +4,7 @@ use serde_json::Value;
 
 use super::Paths;
 use super::load::{Kind, Loaded, Scope, load};
+use super::mcp::{McpServer, resolve_mcp};
 use crate::merge::{Node, SrcId};
 
 /// Settings only honored in managed policy.
@@ -60,6 +61,7 @@ pub struct Resolved {
     pub settings: Node,
     pub dropped: Vec<Dropped>,
     pub trust: Trust,
+    pub mcp: Vec<McpServer>,
 }
 
 pub fn resolve(paths: Paths) -> Resolved {
@@ -74,12 +76,14 @@ pub fn resolve(paths: Paths) -> Resolved {
     }
 
     let trust = trust_state(&paths, &loaded);
+    let mcp = resolve_mcp(&paths, &loaded, &settings, trust);
     Resolved {
         paths,
         loaded,
         settings,
         dropped,
         trust,
+        mcp,
     }
 }
 

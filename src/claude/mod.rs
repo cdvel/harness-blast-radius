@@ -5,6 +5,7 @@
 //! versions is noted where it is modeled.
 
 pub mod load;
+pub mod mcp;
 pub mod paths;
 pub mod resolve;
 
