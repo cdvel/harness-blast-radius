@@ -8,6 +8,7 @@ pub mod load;
 pub mod mcp;
 pub mod paths;
 pub mod resolve;
+pub mod show;
 
 pub use paths::Paths;
 pub use resolve::{Resolved, resolve};
