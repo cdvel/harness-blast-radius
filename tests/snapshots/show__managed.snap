@@ -1,0 +1,44 @@
+---
+source: tests/show.rs
+expression: "show(\"managed\")"
+---
+Claude Code configuration for <tmp>/project
+
+Sources
+  user                           ~/.claude/settings.json
+  managed:managed-settings.json  <tmp>/managed/managed-settings.json
+  managed:10-team.json           <tmp>/managed/managed-settings.d/10-team.json
+  state                          ~/.claude.json
+  managed mcp                    <tmp>/managed/managed-mcp.json
+
+Workspace trust: accepted
+
+Permissions
+  mode: default (not set)
+  deny
+    WebFetch      managed:managed-settings.json
+    Bash(curl *)  managed:10-team.json
+  ask: none
+  allow
+    WebFetch(domain:example.com)  user
+  additionalDirectories: none
+
+Hooks
+  Stop
+    *  command: notify-send done  user  (ignored: managed policy allows managed hooks only)
+
+MCP servers
+  corp  managed  http: https://mcp.corp.example/mcp
+  mine  user     stdio: my-server  (blocked: managed-mcp.json is exclusive)
+
+Settings that run commands
+  none
+
+Environment (values hidden)
+  ORDER  managed:10-team.json  (overrides managed:managed-settings.json)
+
+Sandbox
+  not configured (off by default)
+
+Plugins (hooks and MCP servers from plugins are not read yet)
+  none

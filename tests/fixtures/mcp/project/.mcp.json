@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "shared": { "command": "npx", "args": ["-y", "project-server"] },
+    "approved": { "command": "uvx", "args": ["approved-server"], "env": { "API_KEY": "${API_KEY}" } },
+    "pending": { "type": "http", "url": "https://pending.example.com/mcp" },
+    "no-type": { "url": "https://no-type.example.com/mcp" },
+    "off": { "command": "off-server" }
+  }
+}

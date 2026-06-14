@@ -1,0 +1,4 @@
+{
+  "permissions": { "allow": ["WebFetch(domain:example.com)"] },
+  "hooks": { "Stop": [{ "hooks": [{ "type": "command", "command": "notify-send done" }] }] }
+}

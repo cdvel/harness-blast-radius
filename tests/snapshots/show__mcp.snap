@@ -1,0 +1,43 @@
+---
+source: tests/show.rs
+expression: "show(\"mcp\")"
+---
+Claude Code configuration for <tmp>/project
+
+Sources
+  project      ./.claude/settings.json
+  state        ~/.claude.json
+  project mcp  ./.mcp.json
+
+Workspace trust: accepted
+
+Permissions
+  mode: default (not set)
+  deny: none
+  ask: none
+  allow: none
+  additionalDirectories: none
+
+Hooks
+  none
+
+MCP servers
+  local-only  local    stdio: ./bin/local-mcp
+  approved    project  stdio: uvx approved-server  env: API_KEY  (approved)
+  no-type     project  missing type: https://no-type.example.com/mcp  (skipped: url without type is read as stdio and skipped)
+  off         project  stdio: off-server  (disabled)
+  pending     project  http: https://pending.example.com/mcp  (not approved: prompts interactively, loads without a prompt in -p and SDK runs)
+  shared      project  stdio: npx -y project-server  (not approved: prompts interactively, loads without a prompt in -p and SDK runs)  (overrides user)
+  user-only   user     http: https://mcp.example.com/mcp  headers: Authorization
+
+Settings that run commands
+  none
+
+Environment (values hidden)
+  none
+
+Sandbox
+  not configured (off by default)
+
+Plugins (hooks and MCP servers from plugins are not read yet)
+  none

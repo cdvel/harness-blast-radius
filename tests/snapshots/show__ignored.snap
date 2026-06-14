@@ -1,0 +1,38 @@
+---
+source: tests/show.rs
+expression: "show(\"ignored\")"
+---
+Claude Code configuration for <tmp>/project
+
+Sources
+  none found
+  ignored  ~/.claude/settings.json: invalid JSON: trailing comma at line 1 column 37
+  ignored  ./.claude/settings.json: invalid JSON: key must be a string at line 2 column 3
+  ignored  ./.mcp.json: top level is not a JSON object
+
+Workspace trust: unknown (no entry in ~/.claude.json): repo allow rules, env and hooks wait for the trust dialog
+
+Permissions
+  mode: default (not set)
+  deny: none
+  ask: none
+  allow: none
+  additionalDirectories: none
+
+Hooks
+  none
+
+MCP servers
+  none
+
+Settings that run commands
+  none
+
+Environment (values hidden)
+  none
+
+Sandbox
+  not configured (off by default)
+
+Plugins (hooks and MCP servers from plugins are not read yet)
+  none

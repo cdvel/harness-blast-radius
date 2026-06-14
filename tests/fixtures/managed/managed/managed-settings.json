@@ -1,0 +1,1 @@
+{ "allowManagedHooksOnly": true, "permissions": { "deny": ["WebFetch"] }, "env": { "ORDER": "base" } }

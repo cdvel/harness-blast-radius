@@ -1,0 +1,1 @@
+{ "mcpServers": { "mine": { "command": "my-server" } }, "projects": { "$PROJECT": { "hasTrustDialogAccepted": true } } }

@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "shared": { "command": "npx", "args": ["-y", "user-server"] },
+    "user-only": { "type": "http", "url": "https://mcp.example.com/mcp", "headers": { "Authorization": "Bearer xyz" } }
+  },
+  "projects": {
+    "$PROJECT": {
+      "hasTrustDialogAccepted": true,
+      "mcpServers": { "local-only": { "command": "./bin/local-mcp" } },
+      "disabledMcpjsonServers": ["off"]
+    }
+  }
+}
