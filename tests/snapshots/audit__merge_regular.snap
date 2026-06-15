@@ -1,0 +1,20 @@
+---
+source: tests/audit.rs
+expression: "audit(\"merge\", Persona::Regular)"
+---
+low     ignored-value  allowManagedHooksOnly = false: only read from managed settings
+        at ./.claude/settings.json  allowManagedHooksOnly
+        Setting has no effect in this scope
+        fix: Move the setting to a scope that honors it, or remove it
+
+low     ignored-value  processWrapper = ./wrap.sh: only read from user or managed settings
+        at ./.claude/settings.json  processWrapper
+        Setting has no effect in this scope
+        fix: Move the setting to a scope that honors it, or remove it
+
+low     ignored-value  permissions.defaultMode = bypassPermissions: project and local files cannot set this mode
+        at ./.claude/settings.json  permissions.defaultMode
+        Setting has no effect in this scope
+        fix: Move the setting to a scope that honors it, or remove it
+
+3 findings, 3 low (1 hidden, --persona auditor shows all)

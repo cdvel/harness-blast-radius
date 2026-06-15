@@ -1,0 +1,55 @@
+---
+source: tests/audit.rs
+expression: "audit(\"risky\", Persona::Auditor)"
+---
+high    broad-shell-allow  Bash
+        at ~/.claude/settings.json  permissions.allow
+        Allow rule approves every shell command
+        fix: Replace with specific rules such as Bash(npm run test *)
+
+high    bypass-default-mode  defaultMode = bypassPermissions
+        at ~/.claude/settings.json  permissions.defaultMode
+        Permission prompts are off: every tool call runs without asking
+        fix: Use default or acceptEdits, run bypass mode only inside a sandbox or container, or set permissions.disableBypassPermissionsMode to "disable"
+
+medium  broad-additional-directory  ~/
+        at ~/.claude/settings.json  permissions.additionalDirectories
+        Additional directory grants file access to the home directory or the whole filesystem
+        fix: List the specific directories the project needs
+
+medium  broad-allow  WebFetch
+        at ~/.claude/settings.json  permissions.allow
+        Allow rule approves a whole tool or every MCP server without asking
+        fix: Scope the rule to paths, domains or specific MCP tools
+
+medium  broad-allow  mcp__*
+        at ~/.claude/settings.json  permissions.allow
+        Allow rule approves a whole tool or every MCP server without asking
+        fix: Scope the rule to paths, domains or specific MCP tools
+
+medium  interpreter-allow  Bash(python3 *)
+        at ~/.claude/settings.json  permissions.allow
+        Allow rule approves a program that can run arbitrary code or reach the network, which makes other rules easy to bypass
+        fix: Allow specific scripts or subcommands instead of the interpreter or tool itself
+
+medium  interpreter-allow  Bash(curl *) (applies after workspace trust)
+        at ./.claude/settings.json  permissions.allow
+        Allow rule approves a program that can run arbitrary code or reach the network, which makes other rules easy to bypass
+        fix: Allow specific scripts or subcommands instead of the interpreter or tool itself
+
+medium  unsupported-rule-syntax  Bash(command:rm)
+        at ~/.claude/settings.json  permissions.deny
+        Permission rule uses syntax Claude Code ignores, so it does not allow, ask or deny what it appears to
+        fix: Rewrite as Bash(prefix *), e.g. Bash(rm *)
+
+low     legacy-rule-syntax  Bash(git log:*)
+        at ~/.claude/settings.json  permissions.allow
+        Permission rule uses the legacy :* prefix syntax
+        fix: Use the space wildcard form, e.g. Bash(git log *)
+
+low     secret-deny-without-sandbox  Read(~/.ssh/**)
+        at ~/.claude/settings.json  permissions.deny
+        Read deny rules protect secret files from file tools only; shell commands can still read them without the sandbox
+        fix: Enable the sandbox with sandbox.filesystem.denyRead for the same paths
+
+10 findings, 2 high, 6 medium, 2 low

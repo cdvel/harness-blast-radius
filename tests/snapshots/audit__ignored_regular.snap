@@ -1,0 +1,20 @@
+---
+source: tests/audit.rs
+expression: "audit(\"ignored\", Persona::Regular)"
+---
+medium  ignored-file  invalid JSON: trailing comma at line 1 column 37
+        at ~/.claude/settings.json
+        Config file is not loaded, so none of its settings apply, including deny rules
+        fix: Fix the JSON (no comments or trailing commas) or remove the file
+
+medium  ignored-file  invalid JSON: key must be a string at line 2 column 3
+        at ./.claude/settings.json
+        Config file is not loaded, so none of its settings apply, including deny rules
+        fix: Fix the JSON (no comments or trailing commas) or remove the file
+
+medium  ignored-file  top level is not a JSON object
+        at ./.mcp.json
+        Config file is not loaded, so none of its settings apply, including deny rules
+        fix: Fix the JSON (no comments or trailing commas) or remove the file
+
+3 findings, 3 medium

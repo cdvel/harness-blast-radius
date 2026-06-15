@@ -4,10 +4,12 @@
 //! hooks, MCP pages at code.claude.com/docs). Behavior that changed between
 //! versions is noted where it is modeled.
 
+pub mod audit;
 pub mod load;
 pub mod mcp;
 pub mod paths;
 pub mod resolve;
+pub mod rules;
 pub mod show;
 
 pub use paths::Paths;

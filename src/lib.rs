@@ -4,4 +4,5 @@
 //! resolves them the way Claude Code does, and keeps the source of every value.
 
 pub mod claude;
+pub mod finding;
 pub mod merge;
