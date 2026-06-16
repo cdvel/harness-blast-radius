@@ -4,6 +4,7 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 
 use harness_blast_radius::claude;
+use harness_blast_radius::finding::Persona;
 
 #[derive(Parser)]
 #[command(
@@ -26,6 +27,21 @@ enum Command {
         #[arg(long)]
         managed_dir: Option<PathBuf>,
     },
+    /// Report risky settings in the effective Claude Code configuration
+    Audit {
+        /// Project directory (defaults to the current directory)
+        #[arg(default_value = ".")]
+        path: PathBuf,
+        /// Directory with managed-settings.json and managed-mcp.json
+        #[arg(long)]
+        managed_dir: Option<PathBuf>,
+        /// How much to report
+        #[arg(long, value_enum, default_value_t = Persona::Regular)]
+        persona: Persona,
+        /// Exit 0 even when findings are reported
+        #[arg(long)]
+        no_exit_codes: bool,
+    },
 }
 
 fn main() -> Result<()> {
@@ -33,6 +49,29 @@ fn main() -> Result<()> {
         Command::Show { path, managed_dir } => {
             let paths = claude::Paths::detect(&path, managed_dir)?;
             print!("{}", claude::show::render(&claude::resolve(paths)));
+        }
+        Command::Audit {
+            path,
+            managed_dir,
+            persona,
+            no_exit_codes,
+        } => {
+            let paths = claude::Paths::detect(&path, managed_dir)?;
+            let resolved = claude::resolve(paths);
+            let findings = claude::rules::check(&resolved);
+            print!(
+                "{}",
+                claude::audit::render(&resolved.paths, &findings, persona)
+            );
+            // Exit codes encode the highest visible severity: 11 low, 12 medium, 13 high.
+            let worst = findings
+                .iter()
+                .filter(|f| f.visible(persona))
+                .map(|f| f.rule.severity)
+                .max();
+            if let (Some(sev), false) = (worst, no_exit_codes) {
+                std::process::exit(sev.exit_code());
+            }
         }
     }
     Ok(())
