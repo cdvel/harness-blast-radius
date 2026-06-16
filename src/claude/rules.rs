@@ -4,6 +4,7 @@ use std::path::Path;
 
 use serde_json::Value;
 
+use super::mcp::{McpScope, McpServer, McpStatus};
 use super::resolve::{Resolved, Status};
 use crate::finding::{Confidence, Finding, Persona, Rule, Severity};
 use crate::merge::{Item, SrcId};
@@ -12,6 +13,7 @@ pub fn check(r: &Resolved) -> Vec<Finding> {
     let mut out = Vec::new();
     ignored(r, &mut out);
     permissions(r, &mut out);
+    mcp(r, &mut out);
     out.sort_by(|a, b| {
         b.rule
             .severity
@@ -264,6 +266,193 @@ fn permissions(r: &Resolved, out: &mut Vec<Finding>) {
     }
 }
 
+// MCP servers.
+
+pub static MCP_UNPINNED_PACKAGE: Rule = Rule {
+    id: "mcp-unpinned-package",
+    severity: Severity::Medium,
+    confidence: Confidence::Medium,
+    persona: Persona::Regular,
+    summary: "MCP server runs the latest published package on every start, so a compromised release runs without review",
+    fix: "Pin an exact version, e.g. npx -y pkg@1.2.3 or uvx pkg==1.2.3",
+};
+
+pub static MCP_PLAINTEXT_SECRET: Rule = Rule {
+    id: "mcp-plaintext-secret",
+    severity: Severity::High,
+    confidence: Confidence::Medium,
+    persona: Persona::Regular,
+    summary: "MCP server config holds a credential in plain text",
+    fix: "Reference an environment variable with ${VAR} and keep the value out of config files",
+};
+
+pub static MCP_INSECURE_HTTP: Rule = Rule {
+    id: "mcp-insecure-http",
+    severity: Severity::Medium,
+    confidence: Confidence::High,
+    persona: Persona::Regular,
+    summary: "Remote MCP server uses plain http, so requests and tokens travel unencrypted",
+    fix: "Use an https URL",
+};
+
+pub static MCP_INVALID_ENTRY: Rule = Rule {
+    id: "mcp-invalid-entry",
+    severity: Severity::Low,
+    confidence: Confidence::High,
+    persona: Persona::Regular,
+    summary: "MCP entry has a url but no type; Claude Code reads it as stdio and skips it",
+    fix: "Add \"type\": \"http\" (or \"ws\")",
+};
+
+pub static MCP_ENABLE_ALL_PROJECT: Rule = Rule {
+    id: "mcp-enable-all-project-servers",
+    severity: Severity::Medium,
+    confidence: Confidence::High,
+    persona: Persona::Regular,
+    summary: "Every MCP server a repository's .mcp.json defines is approved without review",
+    fix: "Remove enableAllProjectMcpServers and approve servers by name with enabledMcpjsonServers",
+};
+
+pub static MCP_PROJECT_UNAPPROVED: Rule = Rule {
+    id: "mcp-project-unapproved",
+    severity: Severity::Low,
+    confidence: Confidence::Medium,
+    persona: Persona::Pedantic,
+    summary: "Project MCP server is not approved: interactive sessions prompt, but -p, SDK and cloud sessions load it without a prompt",
+    fix: "Approve it with enabledMcpjsonServers or block it with disabledMcpjsonServers",
+};
+
+const PACKAGE_RUNNERS: &[&str] = &["npx", "bunx", "pnpx", "uvx", "pipx"];
+
+fn mcp(r: &Resolved, out: &mut Vec<Finding>) {
+    if let Some(leaf) = r.settings.leaf("enableAllProjectMcpServers") {
+        if leaf.value == Value::Bool(true) {
+            let note = if r.status(leaf.src, "permissions.allow") == Status::AfterTrust {
+                " (applies after workspace trust)"
+            } else {
+                ""
+            };
+            out.push(
+                Finding::new(
+                    &MCP_ENABLE_ALL_PROJECT,
+                    format!("enableAllProjectMcpServers = true{note}"),
+                )
+                .at(path(r, leaf.src), "enableAllProjectMcpServers"),
+            );
+        }
+    }
+
+    for s in &r.mcp {
+        let at = |f: Finding| f.at(path(r, s.src), mcp_key(s));
+        for (field, name) in plaintext_secrets(&s.config) {
+            out.push(at(Finding::new(
+                &MCP_PLAINTEXT_SECRET,
+                format!("{}: {field}.{name}", s.name),
+            )));
+        }
+        if s.status == McpStatus::Invalid {
+            out.push(at(Finding::new(&MCP_INVALID_ENTRY, s.name.clone())));
+            continue;
+        }
+        if matches!(s.status, McpStatus::Blocked | McpStatus::Disabled) {
+            continue;
+        }
+        if s.status == McpStatus::Pending {
+            out.push(at(Finding::new(&MCP_PROJECT_UNAPPROVED, s.name.clone())));
+        }
+        if let Some(pkg) = unpinned_package(&s.config) {
+            out.push(at(Finding::new(
+                &MCP_UNPINNED_PACKAGE,
+                format!("{}: {pkg}", s.name),
+            )));
+        }
+        if let Some(url) = s.config.get("url").and_then(Value::as_str) {
+            if insecure_url(url) {
+                out.push(at(Finding::new(
+                    &MCP_INSECURE_HTTP,
+                    format!("{}: {url}", s.name),
+                )));
+            }
+        }
+    }
+}
+
+fn mcp_key(s: &McpServer) -> String {
+    match s.scope {
+        McpScope::Local => format!("projects.<path>.mcpServers.{}", s.name),
+        _ => format!("mcpServers.{}", s.name),
+    }
+}
+
+/// `env` and `headers` entries that look like credentials and are not
+/// `${VAR}` references. Returns field and key names only, never values.
+fn plaintext_secrets(config: &Value) -> Vec<(&'static str, String)> {
+    let mut out = Vec::new();
+    for field in ["env", "headers"] {
+        let Some(Value::Object(map)) = config.get(field) else {
+            continue;
+        };
+        for (name, value) in map {
+            let Some(value) = value.as_str() else {
+                continue;
+            };
+            let literal = value.trim_start_matches("Bearer ").trim();
+            if literal.is_empty() || literal.starts_with("${") {
+                continue;
+            }
+            let upper = name.to_ascii_uppercase();
+            let secret_name = [
+                "TOKEN",
+                "KEY",
+                "SECRET",
+                "PASSWORD",
+                "AUTHORIZATION",
+                "CREDENTIAL",
+            ]
+            .iter()
+            .any(|w| upper.contains(w));
+            if secret_name || value.starts_with("Bearer ") {
+                out.push((field, name.clone()));
+            }
+        }
+    }
+    out
+}
+
+/// Package argument of an `npx`/`uvx`-style server without a pinned version.
+fn unpinned_package(config: &Value) -> Option<String> {
+    let command = config.get("command")?.as_str()?;
+    let runner = command.rsplit('/').next().unwrap_or(command);
+    if !PACKAGE_RUNNERS.contains(&runner) {
+        return None;
+    }
+    let args = config.get("args")?.as_array()?;
+    let pkg = args
+        .iter()
+        .filter_map(Value::as_str)
+        .find(|a| !a.starts_with('-'))?;
+    let pinned = match runner {
+        "uvx" | "pipx" => pkg.contains("==") || pkg.contains('@'),
+        // Scoped npm packages start with @; the version follows a second @.
+        _ => pkg
+            .trim_start_matches('@')
+            .split_once('@')
+            .is_some_and(|(_, v)| !v.is_empty() && v != "latest"),
+    };
+    (!pinned).then(|| pkg.to_string())
+}
+
+fn insecure_url(url: &str) -> bool {
+    let Some(rest) = url.strip_prefix("http://") else {
+        return false;
+    };
+    if rest.starts_with("[::1]") {
+        return false;
+    }
+    let host = rest.split(['/', ':']).next().unwrap_or("");
+    !matches!(host, "localhost" | "127.0.0.1")
+}
+
 /// First program in a `Bash(...)` rule, ignoring wildcards and the legacy `:*`.
 fn bash_program(rule: &str) -> Option<&str> {
     let inner = rule.strip_prefix("Bash(")?.strip_suffix(')')?;
@@ -275,7 +464,8 @@ fn bash_program(rule: &str) -> Option<&str> {
 
 #[cfg(test)]
 mod tests {
-    use super::bash_program;
+    use super::{bash_program, insecure_url, unpinned_package};
+    use serde_json::json;
 
     #[test]
     fn bash_program_strips_wildcards_and_paths() {
@@ -284,5 +474,32 @@ mod tests {
         assert_eq!(bash_program("Bash(/usr/bin/node script.js)"), Some("node"));
         assert_eq!(bash_program("Bash(*)"), None);
         assert_eq!(bash_program("Read(**)"), None);
+    }
+
+    #[test]
+    fn unpinned_package_detects_missing_versions() {
+        let npx = |pkg: &str| json!({"command": "npx", "args": ["-y", pkg]});
+        assert_eq!(unpinned_package(&npx("server")), Some("server".into()));
+        assert_eq!(
+            unpinned_package(&npx("@scope/server")),
+            Some("@scope/server".into())
+        );
+        assert_eq!(
+            unpinned_package(&npx("@scope/server@latest")),
+            Some("@scope/server@latest".into())
+        );
+        assert_eq!(unpinned_package(&npx("@scope/server@1.2.3")), None);
+        assert_eq!(
+            unpinned_package(&json!({"command": "uvx", "args": ["tool==0.4"]})),
+            None
+        );
+        assert_eq!(unpinned_package(&json!({"command": "./bin/server"})), None);
+    }
+
+    #[test]
+    fn insecure_url_allows_localhost() {
+        assert!(insecure_url("http://mcp.example.com/mcp"));
+        assert!(!insecure_url("http://localhost:3000/mcp"));
+        assert!(!insecure_url("https://mcp.example.com/mcp"));
     }
 }

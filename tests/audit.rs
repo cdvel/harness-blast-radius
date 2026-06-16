@@ -29,3 +29,8 @@ fn merge_regular() {
 fn ignored_regular() {
     insta::assert_snapshot!(audit("ignored", Persona::Regular));
 }
+
+#[test]
+fn mcp_auditor() {
+    insta::assert_snapshot!(audit("mcp", Persona::Auditor));
+}

@@ -1,0 +1,35 @@
+---
+source: tests/audit.rs
+expression: "audit(\"mcp\", Persona::Auditor)"
+---
+high    mcp-plaintext-secret  user-only: headers.Authorization
+        at ~/.claude.json  mcpServers.user-only
+        MCP server config holds a credential in plain text
+        fix: Reference an environment variable with ${VAR} and keep the value out of config files
+
+medium  mcp-unpinned-package  approved: approved-server
+        at ./.mcp.json  mcpServers.approved
+        MCP server runs the latest published package on every start, so a compromised release runs without review
+        fix: Pin an exact version, e.g. npx -y pkg@1.2.3 or uvx pkg==1.2.3
+
+medium  mcp-unpinned-package  shared: project-server
+        at ./.mcp.json  mcpServers.shared
+        MCP server runs the latest published package on every start, so a compromised release runs without review
+        fix: Pin an exact version, e.g. npx -y pkg@1.2.3 or uvx pkg==1.2.3
+
+low     mcp-invalid-entry  no-type
+        at ./.mcp.json  mcpServers.no-type
+        MCP entry has a url but no type; Claude Code reads it as stdio and skips it
+        fix: Add "type": "http" (or "ws")
+
+low     mcp-project-unapproved  pending
+        at ./.mcp.json  mcpServers.pending
+        Project MCP server is not approved: interactive sessions prompt, but -p, SDK and cloud sessions load it without a prompt
+        fix: Approve it with enabledMcpjsonServers or block it with disabledMcpjsonServers
+
+low     mcp-project-unapproved  shared
+        at ./.mcp.json  mcpServers.shared
+        Project MCP server is not approved: interactive sessions prompt, but -p, SDK and cloud sessions load it without a prompt
+        fix: Approve it with enabledMcpjsonServers or block it with disabledMcpjsonServers
+
+6 findings, 1 high, 2 medium, 3 low
