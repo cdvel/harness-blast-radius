@@ -38,6 +38,14 @@ pub fn run(fixture: &str, f: impl Fn(&Paths) -> String) -> String {
         fs::write(&state, text.replace("$PROJECT", project.to_str().unwrap())).unwrap();
     }
 
+    // Keep home private so state-file permission rules don't depend on umask.
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::create_dir_all(&home).unwrap();
+        fs::set_permissions(&home, fs::Permissions::from_mode(0o700)).unwrap();
+    }
+
     let paths = Paths::for_home(&home, &project, Some(root.join("managed"))).unwrap();
     f(&paths).replace(root.to_str().unwrap(), "<tmp>")
 }

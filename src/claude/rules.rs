@@ -16,6 +16,7 @@ pub fn check(r: &Resolved) -> Vec<Finding> {
     mcp(r, &mut out);
     commands(r, &mut out);
     sandbox(r, &mut out);
+    local_files(r, &mut out);
     out.sort_by(|a, b| {
         b.rule
             .severity
@@ -553,6 +554,77 @@ fn sandbox(r: &Resolved, out: &mut Vec<Finding>) {
                 .at(path(r, item.srcs[0]), "sandbox.excludedCommands"),
         );
     }
+}
+
+// Local state files.
+
+pub static STATE_FILE_READABLE: Rule = Rule {
+    id: "state-file-readable",
+    severity: Severity::Medium,
+    confidence: Confidence::Medium,
+    persona: Persona::Regular,
+    summary: "File with prompt history, credentials or app state is readable by other users on this machine",
+    fix: "chmod 600 the file",
+};
+
+pub static STATE_DIR_READABLE: Rule = Rule {
+    id: "state-dir-readable",
+    severity: Severity::Low,
+    confidence: Confidence::Medium,
+    persona: Persona::Regular,
+    summary: "Directories with session data, file snapshots or pasted text are readable by other users on this machine",
+    fix: "chmod 700 the directories",
+};
+
+const STATE_FILES: &[&str] = &["history.jsonl", ".credentials.json"];
+const STATE_DIRS: &[&str] = &[
+    "file-history",
+    "paste-cache",
+    "plans",
+    "projects",
+    "session-env",
+    "sessions",
+    "shell-snapshots",
+    "todos",
+];
+
+#[cfg(unix)]
+fn local_files(r: &Resolved, out: &mut Vec<Finding>) {
+    let config = &r.paths.config_dir;
+    let mut files: Vec<std::path::PathBuf> = STATE_FILES.iter().map(|f| config.join(f)).collect();
+    files.push(r.paths.claude_json.clone());
+    for file in files {
+        if others_can_read(&r.paths.home, &file) {
+            out.push(Finding::new(&STATE_FILE_READABLE, r.paths.display(&file)).at(&file, ""));
+        }
+    }
+    let dirs: Vec<&str> = STATE_DIRS
+        .iter()
+        .copied()
+        .filter(|d| others_can_read(&r.paths.home, &config.join(d)))
+        .collect();
+    if !dirs.is_empty() {
+        out.push(Finding::new(&STATE_DIR_READABLE, dirs.join(", ")).at(config, ""));
+    }
+}
+
+#[cfg(not(unix))]
+fn local_files(_: &Resolved, _: &mut Vec<Finding>) {}
+
+/// Readable by "other" and reachable: every directory from `home` down to
+/// the path's parent lets others traverse it.
+#[cfg(unix)]
+fn others_can_read(home: &Path, path: &Path) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+    let mode = |p: &Path| std::fs::metadata(p).map(|m| m.permissions().mode()).ok();
+    let Some(m) = mode(path) else { return false };
+    if m & 0o004 == 0 {
+        return false;
+    }
+    path.ancestors()
+        .skip(1)
+        .take_while(|dir| dir.starts_with(home))
+        .all(|dir| mode(dir).is_some_and(|m| m & 0o001 != 0))
 }
 
 /// First program in a `Bash(...)` rule, ignoring wildcards and the legacy `:*`.
