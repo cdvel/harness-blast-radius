@@ -17,4 +17,4 @@ medium  ignored-file  top level is not a JSON object
         Config file is not loaded, so none of its settings apply, including deny rules
         fix: Fix the JSON (no comments or trailing commas) or remove the file
 
-3 findings, 3 medium
+3 findings, 3 medium (1 hidden, --persona auditor shows all)

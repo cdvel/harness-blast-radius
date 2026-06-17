@@ -42,4 +42,4 @@ medium  unsupported-rule-syntax  Bash(command:rm)
         Permission rule uses syntax Claude Code ignores, so it does not allow, ask or deny what it appears to
         fix: Rewrite as Bash(prefix *), e.g. Bash(rm *)
 
-8 findings, 2 high, 6 medium (2 hidden, --persona auditor shows all)
+8 findings, 2 high, 6 medium (3 hidden, --persona auditor shows all)

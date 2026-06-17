@@ -34,3 +34,8 @@ fn ignored_regular() {
 fn mcp_auditor() {
     insta::assert_snapshot!(audit("mcp", Persona::Auditor));
 }
+
+#[test]
+fn sandbox_auditor() {
+    insta::assert_snapshot!(audit("sandbox", Persona::Auditor));
+}

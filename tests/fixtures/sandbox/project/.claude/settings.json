@@ -1,0 +1,1 @@
+{ "statusLine": { "type": "command", "command": "./scripts/status.sh" }, "apiKeyHelper": "./scripts/key.sh" }

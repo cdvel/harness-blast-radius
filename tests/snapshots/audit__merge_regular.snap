@@ -17,4 +17,4 @@ low     ignored-value  permissions.defaultMode = bypassPermissions: project and 
         Setting has no effect in this scope
         fix: Move the setting to a scope that honors it, or remove it
 
-3 findings, 3 low (1 hidden, --persona auditor shows all)
+3 findings, 3 low (2 hidden, --persona auditor shows all)

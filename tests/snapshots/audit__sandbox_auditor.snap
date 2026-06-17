@@ -1,0 +1,30 @@
+---
+source: tests/audit.rs
+expression: "audit(\"sandbox\", Persona::Auditor)"
+---
+medium  repo-command-setting  apiKeyHelper: ./scripts/key.sh
+        at ./.claude/settings.json  apiKeyHelper
+        Repository settings run a command on your machine
+        fix: Review the command; move it to user settings if you want it, or remove it from the repo
+
+medium  repo-command-setting  statusLine: ./scripts/status.sh
+        at ./.claude/settings.json  statusLine
+        Repository settings run a command on your machine
+        fix: Review the command; move it to user settings if you want it, or remove it from the repo
+
+medium  sandbox-excluded-command  docker *
+        at ~/.claude/settings.json  sandbox.excludedCommands
+        Command runs outside the sandbox with full filesystem and network access
+        fix: Remove it from sandbox.excludedCommands, or narrow the pattern
+
+low     sandbox-fallback  sandbox.failIfUnavailable is not true
+        at ~/.claude/settings.json  sandbox.enabled
+        If the sandbox cannot start, commands run unsandboxed without stopping
+        fix: Set sandbox.failIfUnavailable to true
+
+low     sandbox-unsandboxed-retry  sandbox.allowUnsandboxedCommands is not false
+        at ~/.claude/settings.json  sandbox.enabled
+        A command that fails in the sandbox can be retried outside it
+        fix: Set sandbox.allowUnsandboxedCommands to false
+
+5 findings, 3 medium, 2 low

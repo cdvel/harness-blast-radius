@@ -6,22 +6,8 @@ use serde_json::Value;
 
 use super::load::{Kind, Scope};
 use super::mcp::{McpServer, McpStatus};
-use super::resolve::{Resolved, Status, Trust};
+use super::resolve::{COMMAND_SETTINGS, Resolved, Status, Trust};
 use crate::merge::{Item, Node, SrcId};
-
-/// Settings that run a command or script.
-const COMMAND_SETTINGS: &[&str] = &[
-    "apiKeyHelper",
-    "statusLine",
-    "fileSuggestion",
-    "subagentStatusLine",
-    "awsAuthRefresh",
-    "awsCredentialExport",
-    "gcpAuthRefresh",
-    "otelHeadersHelper",
-    "processWrapper",
-    "policyHelper",
-];
 
 pub fn render(r: &Resolved) -> String {
     let mut out = String::new();
@@ -316,11 +302,7 @@ fn commands(r: &Resolved, out: &mut String) {
     heading(out, "Settings that run commands");
     let mut list = Vec::new();
     for &key in COMMAND_SETTINGS {
-        let leaf = r
-            .settings
-            .leaf(key)
-            .or_else(|| r.settings.leaf(&format!("{key}.command")));
-        if let Some(leaf) = leaf {
+        if let Some(leaf) = r.command_setting(key) {
             list.push((
                 key.to_string(),
                 format!("{}  {}", text(&leaf.value), label(r, leaf.src)),

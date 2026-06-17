@@ -47,9 +47,13 @@ low     legacy-rule-syntax  Bash(git log:*)
         Permission rule uses the legacy :* prefix syntax
         fix: Use the space wildcard form, e.g. Bash(git log *)
 
+low     sandbox-off  sandbox.enabled is not true
+        Shell commands run without filesystem or network isolation
+        fix: Enable the sandbox with /sandbox or sandbox.enabled
+
 low     secret-deny-without-sandbox  Read(~/.ssh/**)
         at ~/.claude/settings.json  permissions.deny
         Read deny rules protect secret files from file tools only; shell commands can still read them without the sandbox
         fix: Enable the sandbox with sandbox.filesystem.denyRead for the same paths
 
-10 findings, 2 high, 6 medium, 2 low
+11 findings, 2 high, 6 medium, 3 low

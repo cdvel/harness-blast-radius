@@ -5,7 +5,7 @@ use std::path::Path;
 use serde_json::Value;
 
 use super::mcp::{McpScope, McpServer, McpStatus};
-use super::resolve::{Resolved, Status};
+use super::resolve::{COMMAND_SETTINGS, Resolved, Status};
 use crate::finding::{Confidence, Finding, Persona, Rule, Severity};
 use crate::merge::{Item, SrcId};
 
@@ -14,6 +14,8 @@ pub fn check(r: &Resolved) -> Vec<Finding> {
     ignored(r, &mut out);
     permissions(r, &mut out);
     mcp(r, &mut out);
+    commands(r, &mut out);
+    sandbox(r, &mut out);
     out.sort_by(|a, b| {
         b.rule
             .severity
@@ -451,6 +453,106 @@ fn insecure_url(url: &str) -> bool {
     }
     let host = rest.split(['/', ':']).next().unwrap_or("");
     !matches!(host, "localhost" | "127.0.0.1")
+}
+
+// Settings that run commands.
+
+pub static REPO_COMMAND_SETTING: Rule = Rule {
+    id: "repo-command-setting",
+    severity: Severity::Medium,
+    confidence: Confidence::High,
+    persona: Persona::Regular,
+    summary: "Repository settings run a command on your machine",
+    fix: "Review the command; move it to user settings if you want it, or remove it from the repo",
+};
+
+fn commands(r: &Resolved, out: &mut Vec<Finding>) {
+    for &key in COMMAND_SETTINGS {
+        let Some(leaf) = r.command_setting(key) else {
+            continue;
+        };
+        if r.scope(leaf.src).is_repo() {
+            out.push(
+                Finding::new(
+                    &REPO_COMMAND_SETTING,
+                    format!("{key}: {}", text(&leaf.value)),
+                )
+                .at(path(r, leaf.src), key),
+            );
+        }
+    }
+}
+
+// Sandbox.
+
+pub static SANDBOX_OFF: Rule = Rule {
+    id: "sandbox-off",
+    severity: Severity::Low,
+    confidence: Confidence::High,
+    persona: Persona::Pedantic,
+    summary: "Shell commands run without filesystem or network isolation",
+    fix: "Enable the sandbox with /sandbox or sandbox.enabled",
+};
+
+pub static SANDBOX_FALLBACK: Rule = Rule {
+    id: "sandbox-fallback",
+    severity: Severity::Low,
+    confidence: Confidence::Medium,
+    persona: Persona::Pedantic,
+    summary: "If the sandbox cannot start, commands run unsandboxed without stopping",
+    fix: "Set sandbox.failIfUnavailable to true",
+};
+
+pub static SANDBOX_EXCLUDED_COMMAND: Rule = Rule {
+    id: "sandbox-excluded-command",
+    severity: Severity::Medium,
+    confidence: Confidence::High,
+    persona: Persona::Regular,
+    summary: "Command runs outside the sandbox with full filesystem and network access",
+    fix: "Remove it from sandbox.excludedCommands, or narrow the pattern",
+};
+
+pub static SANDBOX_UNSANDBOXED_RETRY: Rule = Rule {
+    id: "sandbox-unsandboxed-retry",
+    severity: Severity::Low,
+    confidence: Confidence::Medium,
+    persona: Persona::Pedantic,
+    summary: "A command that fails in the sandbox can be retried outside it",
+    fix: "Set sandbox.allowUnsandboxedCommands to false",
+};
+
+fn sandbox(r: &Resolved, out: &mut Vec<Finding>) {
+    let flag = |key: &str| {
+        r.settings
+            .leaf(key)
+            .map(|l| (l.value == Value::Bool(true), l.src))
+    };
+    let Some((true, src)) = flag("sandbox.enabled") else {
+        out.push(Finding::new(&SANDBOX_OFF, "sandbox.enabled is not true"));
+        return;
+    };
+    if !matches!(flag("sandbox.failIfUnavailable"), Some((true, _))) {
+        out.push(
+            Finding::new(&SANDBOX_FALLBACK, "sandbox.failIfUnavailable is not true")
+                .at(path(r, src), "sandbox.enabled"),
+        );
+    }
+    match r.settings.leaf("sandbox.allowUnsandboxedCommands") {
+        Some(l) if l.value == Value::Bool(false) => {}
+        _ => out.push(
+            Finding::new(
+                &SANDBOX_UNSANDBOXED_RETRY,
+                "sandbox.allowUnsandboxedCommands is not false",
+            )
+            .at(path(r, src), "sandbox.enabled"),
+        ),
+    }
+    for item in r.settings.items("sandbox.excludedCommands") {
+        out.push(
+            Finding::new(&SANDBOX_EXCLUDED_COMMAND, text(&item.value))
+                .at(path(r, item.srcs[0]), "sandbox.excludedCommands"),
+        );
+    }
 }
 
 /// First program in a `Bash(...)` rule, ignoring wildcards and the legacy `:*`.

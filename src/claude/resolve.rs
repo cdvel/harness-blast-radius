@@ -5,7 +5,7 @@ use serde_json::Value;
 use super::Paths;
 use super::load::{Kind, Loaded, Scope, load};
 use super::mcp::{McpServer, resolve_mcp};
-use crate::merge::{Node, SrcId};
+use crate::merge::{Leaf, Node, SrcId};
 
 /// Settings only honored in managed policy.
 const MANAGED_ONLY: &[&str] = &[
@@ -25,6 +25,20 @@ const AFTER_TRUST: &[&str] = &[
     "extraKnownMarketplaces",
     "env",
     "hooks",
+];
+
+/// Settings that run a command or script.
+pub const COMMAND_SETTINGS: &[&str] = &[
+    "apiKeyHelper",
+    "statusLine",
+    "fileSuggestion",
+    "subagentStatusLine",
+    "awsAuthRefresh",
+    "awsCredentialExport",
+    "gcpAuthRefresh",
+    "otelHeadersHelper",
+    "processWrapper",
+    "policyHelper",
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -122,6 +136,14 @@ impl Resolved {
             return Status::AfterTrust;
         }
         Status::Active
+    }
+
+    /// Effective value of a command-running setting. `statusLine` and
+    /// similar settings are objects with a `command` field.
+    pub fn command_setting(&self, key: &str) -> Option<&Leaf> {
+        self.settings
+            .leaf(key)
+            .or_else(|| self.settings.leaf(&format!("{key}.command")))
     }
 
     /// Best status across every source that listed the same value.

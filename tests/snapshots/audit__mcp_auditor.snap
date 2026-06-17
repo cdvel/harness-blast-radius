@@ -32,4 +32,8 @@ low     mcp-project-unapproved  shared
         Project MCP server is not approved: interactive sessions prompt, but -p, SDK and cloud sessions load it without a prompt
         fix: Approve it with enabledMcpjsonServers or block it with disabledMcpjsonServers
 
-6 findings, 1 high, 2 medium, 3 low
+low     sandbox-off  sandbox.enabled is not true
+        Shell commands run without filesystem or network isolation
+        fix: Enable the sandbox with /sandbox or sandbox.enabled
+
+7 findings, 1 high, 2 medium, 4 low
