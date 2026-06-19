@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "example-stdio": { "command": "cat" },
+    "example-http": { "type": "http", "url": "https://example.invalid/mcp" },
+    "example-no-type": { "url": "https://example.invalid/mcp" }
+  }
+}
