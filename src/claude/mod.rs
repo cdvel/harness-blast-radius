@@ -8,6 +8,7 @@ pub mod audit;
 pub mod load;
 pub mod mcp;
 pub mod paths;
+pub mod permission;
 pub mod resolve;
 pub mod rules;
 pub mod show;
