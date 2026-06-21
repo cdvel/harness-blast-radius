@@ -11,6 +11,7 @@ pub mod paths;
 pub mod permission;
 pub mod resolve;
 pub mod rules;
+pub mod shell;
 pub mod show;
 
 pub use paths::Paths;

@@ -4,6 +4,8 @@
 //! about to do, written in the same shape: `Bash(git push)`, `Read(~/.ssh/id_rsa)`,
 //! `WebFetch(https://docs.rs)`, `mcp__github__create_issue`.
 
+use super::shell;
+
 /// A parsed permission rule.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PermissionRule {
@@ -31,6 +33,24 @@ impl PermissionRule {
                 specifier: None,
             }),
         }
+    }
+}
+
+impl PermissionRule {
+    /// Whether a Bash rule matches one simple command (already split and
+    /// stripped of wrappers).
+    pub fn matches_command(&self, command: &str) -> bool {
+        if self.tool != "Bash" {
+            return false;
+        }
+        let Some(spec) = self.specifier.as_deref() else {
+            return true;
+        };
+        // Legacy prefix syntax: `Bash(npm run test:*)`.
+        if let Some(prefix) = spec.strip_suffix(":*") {
+            return command == prefix || command.starts_with(&format!("{prefix} "));
+        }
+        shell::wildcard(spec, command.trim())
     }
 }
 
@@ -108,6 +128,18 @@ mod tests {
         let r = PermissionRule::parse("WebFetch").unwrap();
         assert_eq!((r.tool.as_str(), r.specifier), ("WebFetch", None));
         assert_eq!(PermissionRule::parse("Bash(unclosed"), None);
+    }
+
+    #[test]
+    fn matches_bash_commands() {
+        let rule = |t: &str| PermissionRule::parse(t).unwrap();
+        assert!(rule("Bash").matches_command("rm -rf /"));
+        assert!(rule("Bash(*)").matches_command("anything"));
+        assert!(rule("Bash(npm run *)").matches_command("npm run build"));
+        assert!(!rule("Bash(npm run *)").matches_command("npm install"));
+        assert!(rule("Bash(git log:*)").matches_command("git log --oneline"));
+        assert!(!rule("Bash(git log:*)").matches_command("git logx"));
+        assert!(!rule("Read").matches_command("cat x"));
     }
 
     #[test]
