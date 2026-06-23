@@ -1,0 +1,5 @@
+---
+source: tests/decide.rs
+expression: "decisions(\"risky\", &[\"curl https://example.com\"])"
+---
+curl https://example.com => allow [Bash] uncovered [] after-trust [Bash(curl *)]

@@ -42,6 +42,9 @@ impl PermissionRule {
     /// Whether a Bash rule matches one simple command (already split and
     /// stripped of wrappers).
     pub fn matches_command(&self, command: &str) -> bool {
+        if self.tool == "*" {
+            return true;
+        }
         if self.tool != "Bash" {
             return false;
         }

@@ -1,0 +1,6 @@
+{
+  "permissions": {
+    "allow": ["Bash(npm run *)", "WebFetch(domain:docs.rs)", "mcp__github"],
+    "ask": ["Bash(git push *)", "mcp__github__delete_repo"]
+  }
+}

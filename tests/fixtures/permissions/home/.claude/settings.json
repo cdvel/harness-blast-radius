@@ -1,0 +1,6 @@
+{
+  "permissions": {
+    "allow": ["Bash(git status)", "Bash(git log *)", "Read(~/notes/**)"],
+    "deny": ["Read(~/.ssh/**)", "Bash(rm -rf *)"]
+  }
+}
