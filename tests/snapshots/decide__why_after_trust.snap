@@ -1,0 +1,9 @@
+---
+source: tests/decide.rs
+expression: "common::run(\"risky\", |paths|\n{\n    claude::why::render(&claude::resolve(paths.clone()),\n    \"curl https://example.com\")\n})"
+---
+curl https://example.com
+  allow
+    Bash  user ~/.claude/settings.json  for: curl https://example.com
+  after workspace trust, these repo rules would also apply:
+    Bash(curl *) (allow)  project ./.claude/settings.json

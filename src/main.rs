@@ -27,6 +27,17 @@ enum Command {
         #[arg(long)]
         managed_dir: Option<PathBuf>,
     },
+    /// Explain whether Claude Code would allow, ask or deny a tool call, and which rule decides
+    Why {
+        /// A shell command, or a tool call such as "Read(~/.ssh/id_rsa)" or "mcp__github__create_issue"
+        call: String,
+        /// Project directory (defaults to the current directory)
+        #[arg(long, default_value = ".")]
+        path: PathBuf,
+        /// Directory with managed-settings.json and managed-mcp.json
+        #[arg(long)]
+        managed_dir: Option<PathBuf>,
+    },
     /// Report risky settings in the effective Claude Code configuration
     Audit {
         /// Project directory (defaults to the current directory)
@@ -49,6 +60,14 @@ fn main() -> Result<()> {
         Command::Show { path, managed_dir } => {
             let paths = claude::Paths::detect(&path, managed_dir)?;
             print!("{}", claude::show::render(&claude::resolve(paths)));
+        }
+        Command::Why {
+            call,
+            path,
+            managed_dir,
+        } => {
+            let paths = claude::Paths::detect(&path, managed_dir)?;
+            print!("{}", claude::why::render(&claude::resolve(paths), &call));
         }
         Command::Audit {
             path,

@@ -14,6 +14,7 @@ pub mod resolve;
 pub mod rules;
 pub mod shell;
 pub mod show;
+pub mod why;
 
 pub use paths::Paths;
 pub use resolve::{Resolved, resolve};
