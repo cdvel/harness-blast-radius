@@ -4,7 +4,9 @@ use std::path::Path;
 
 use serde_json::Value;
 
+use super::decide::path_context;
 use super::mcp::{McpScope, McpServer, McpStatus};
+use super::permission::{PathContext, PermissionRule, ToolCall};
 use super::resolve::{COMMAND_SETTINGS, Resolved, Status};
 use crate::finding::{Confidence, Finding, Persona, Rule, Severity};
 use crate::merge::{Item, SrcId};
@@ -204,19 +206,16 @@ fn permissions(r: &Resolved, out: &mut Vec<Finding>) {
         }
     }
 
+    let ctx = path_context(r);
     for item in r.settings.items("permissions.allow") {
         let Some((src, note)) = effective_srcs(r, item, "permissions.allow") else {
             continue;
         };
         let rule_text = text(&item.value);
-        let rule = match rule_text.as_str() {
-            "Bash" | "Bash(*)" | "*" => Some(&BROAD_SHELL_ALLOW),
-            "Edit" | "Write" | "WebFetch" | "WebFetch(domain:*)" | "mcp__*" => Some(&BROAD_ALLOW),
-            other => bash_program(other)
-                .filter(|p| INTERPRETERS.contains(p))
-                .map(|_| &INTERPRETER_ALLOW),
+        let Some(parsed) = PermissionRule::parse(&rule_text) else {
+            continue;
         };
-        if let Some(rule) = rule {
+        if let Some(rule) = allow_risk(&parsed, &ctx) {
             out.push(
                 Finding::new(rule, format!("{rule_text}{note}"))
                     .at(path(r, src), "permissions.allow"),
@@ -627,27 +626,111 @@ fn others_can_read(home: &Path, path: &Path) -> bool {
         .all(|dir| mode(dir).is_some_and(|m| m & 0o001 != 0))
 }
 
-/// First program in a `Bash(...)` rule, ignoring wildcards and the legacy `:*`.
-fn bash_program(rule: &str) -> Option<&str> {
-    let inner = rule.strip_prefix("Bash(")?.strip_suffix(')')?;
-    let first = inner.split_whitespace().next()?;
-    let first = first.trim_end_matches(":*").trim_end_matches('*');
-    let first = first.rsplit('/').next().unwrap_or(first);
-    (!first.is_empty()).then_some(first)
+/// Probe input no real config names, standing in for "anything".
+const PROBE: &str = "harness-blast-radius-probe";
+
+/// Which allow rule finding, if any, applies: checked by running the rule
+/// against probe tool calls it would only match if it were broad.
+fn allow_risk(rule: &PermissionRule, ctx: &PathContext) -> Option<&'static Rule> {
+    let any_command = [PROBE.to_string(), format!("rm -rf {PROBE}")];
+    if any_command.iter().all(|c| rule.matches_command(c)) {
+        return Some(&BROAD_SHELL_ALLOW);
+    }
+    let whole_tool = [
+        ToolCall::Edit(format!("/etc/{PROBE}")),
+        ToolCall::Other {
+            tool: "Write".into(),
+            input: None,
+        },
+        ToolCall::WebFetch(format!("https://{PROBE}.invalid/")),
+        ToolCall::Mcp(format!("mcp__{PROBE}__tool")),
+    ];
+    if whole_tool.iter().any(|c| rule.matches_call(c, ctx)) {
+        return Some(&BROAD_ALLOW);
+    }
+    let runs_interpreter = interpreter_names(rule).iter().any(|p| {
+        [format!("{p} {PROBE}"), format!("{p} -c {PROBE}")]
+            .iter()
+            .any(|c| rule.matches_command(c))
+    });
+    runs_interpreter.then_some(&INTERPRETER_ALLOW)
+}
+
+/// Interpreter names to probe a Bash rule with: every bare name, plus the
+/// rule's own program when it is an interpreter given by path.
+fn interpreter_names(rule: &PermissionRule) -> Vec<String> {
+    let mut names: Vec<String> = INTERPRETERS.iter().map(|p| p.to_string()).collect();
+    let first = rule
+        .specifier
+        .as_deref()
+        .and_then(|s| s.split_whitespace().next())
+        .map(|w| w.trim_end_matches(":*").trim_end_matches('*'));
+    if let Some(first) = first.filter(|w| w.contains('/')) {
+        let base = first.rsplit('/').next().unwrap_or(first);
+        if INTERPRETERS.contains(&base) {
+            names.push(first.to_string());
+        }
+    }
+    names
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{bash_program, insecure_url, unpinned_package};
+    use super::*;
     use serde_json::json;
 
+    fn risk(rule: &str) -> Option<&'static str> {
+        let ctx = PathContext {
+            home: "/home/u".into(),
+            cwd: "/home/u/proj".into(),
+            source_root: "/home/u/proj".into(),
+        };
+        allow_risk(&PermissionRule::parse(rule).unwrap(), &ctx).map(|r| r.id)
+    }
+
     #[test]
-    fn bash_program_strips_wildcards_and_paths() {
-        assert_eq!(bash_program("Bash(python3 *)"), Some("python3"));
-        assert_eq!(bash_program("Bash(curl:*)"), Some("curl"));
-        assert_eq!(bash_program("Bash(/usr/bin/node script.js)"), Some("node"));
-        assert_eq!(bash_program("Bash(*)"), None);
-        assert_eq!(bash_program("Read(**)"), None);
+    fn allow_risk_matches_rules_exactly() {
+        for broad_shell in ["Bash", "Bash(*)", "*", "Bash(**)"] {
+            assert_eq!(
+                risk(broad_shell),
+                Some("broad-shell-allow"),
+                "{broad_shell}"
+            );
+        }
+        for broad in [
+            "Edit",
+            "Edit(//**)",
+            "Write",
+            "WebFetch",
+            "WebFetch(domain:*)",
+            "mcp__*",
+        ] {
+            assert_eq!(risk(broad), Some("broad-allow"), "{broad}");
+        }
+        for interpreter in [
+            "Bash(python3 *)",
+            "Bash(curl:*)",
+            "Bash(sh -c *)",
+            "Bash(/usr/bin/env *)",
+        ] {
+            assert_eq!(
+                risk(interpreter),
+                Some("interpreter-allow"),
+                "{interpreter}"
+            );
+        }
+        for narrow in [
+            "Bash(python3 manage.py test)",
+            "Bash(/usr/bin/node script.js)",
+            "Bash(npm run *)",
+            "Bash(rm *)",
+            "Edit(src/**)",
+            "WebFetch(domain:docs.rs)",
+            "mcp__github",
+            "Read",
+        ] {
+            assert_eq!(risk(narrow), None, "{narrow}");
+        }
     }
 
     #[test]

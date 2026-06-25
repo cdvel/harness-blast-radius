@@ -27,7 +27,17 @@ medium  broad-allow  mcp__*
         Allow rule approves a whole tool or every MCP server without asking
         fix: Scope the rule to paths, domains or specific MCP tools
 
+medium  broad-allow  Edit(//**)
+        at ~/.claude/settings.json  permissions.allow
+        Allow rule approves a whole tool or every MCP server without asking
+        fix: Scope the rule to paths, domains or specific MCP tools
+
 medium  interpreter-allow  Bash(python3 *)
+        at ~/.claude/settings.json  permissions.allow
+        Allow rule approves a program that can run arbitrary code or reach the network, which makes other rules easy to bypass
+        fix: Allow specific scripts or subcommands instead of the interpreter or tool itself
+
+medium  interpreter-allow  Bash(/usr/bin/env *)
         at ~/.claude/settings.json  permissions.allow
         Allow rule approves a program that can run arbitrary code or reach the network, which makes other rules easy to bypass
         fix: Allow specific scripts or subcommands instead of the interpreter or tool itself
@@ -42,4 +52,4 @@ medium  unsupported-rule-syntax  Bash(command:rm)
         Permission rule uses syntax Claude Code ignores, so it does not allow, ask or deny what it appears to
         fix: Rewrite as Bash(prefix *), e.g. Bash(rm *)
 
-8 findings, 2 high, 6 medium (3 hidden, --persona auditor shows all)
+10 findings, 2 high, 8 medium (3 hidden, --persona auditor shows all)

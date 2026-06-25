@@ -27,7 +27,17 @@ medium  broad-allow  mcp__*
         Allow rule approves a whole tool or every MCP server without asking
         fix: Scope the rule to paths, domains or specific MCP tools
 
+medium  broad-allow  Edit(//**)
+        at ~/.claude/settings.json  permissions.allow
+        Allow rule approves a whole tool or every MCP server without asking
+        fix: Scope the rule to paths, domains or specific MCP tools
+
 medium  interpreter-allow  Bash(python3 *)
+        at ~/.claude/settings.json  permissions.allow
+        Allow rule approves a program that can run arbitrary code or reach the network, which makes other rules easy to bypass
+        fix: Allow specific scripts or subcommands instead of the interpreter or tool itself
+
+medium  interpreter-allow  Bash(/usr/bin/env *)
         at ~/.claude/settings.json  permissions.allow
         Allow rule approves a program that can run arbitrary code or reach the network, which makes other rules easy to bypass
         fix: Allow specific scripts or subcommands instead of the interpreter or tool itself
@@ -56,4 +66,4 @@ low     secret-deny-without-sandbox  Read(~/.ssh/**)
         Read deny rules protect secret files from file tools only; shell commands can still read them without the sandbox
         fix: Enable the sandbox with sandbox.filesystem.denyRead for the same paths
 
-11 findings, 2 high, 6 medium, 3 low
+13 findings, 2 high, 8 medium, 3 low

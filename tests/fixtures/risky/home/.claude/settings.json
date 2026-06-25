@@ -1,7 +1,7 @@
 {
   "permissions": {
     "defaultMode": "bypassPermissions",
-    "allow": ["Bash", "WebFetch", "mcp__*", "Bash(python3 *)", "Bash(npm run test *)", "Bash(git log:*)"],
+    "allow": ["Bash", "WebFetch", "mcp__*", "Bash(python3 *)", "Bash(python3 manage.py test)", "Bash(/usr/bin/env *)", "Edit(//**)", "Bash(npm run test *)", "Bash(git log:*)"],
     "deny": ["Read(~/.ssh/**)", "Bash(command:rm)"],
     "additionalDirectories": ["~/"]
   }

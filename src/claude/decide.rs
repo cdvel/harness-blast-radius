@@ -56,14 +56,19 @@ struct Candidate {
     src: SrcId,
 }
 
-pub fn decide(r: &Resolved, call: &ToolCall) -> Verdict {
+/// Directories path rules resolve against for this project.
+pub fn path_context(r: &Resolved) -> PathContext {
     // Unverified: `/path` rules from user settings resolve against the
     // project too, the same as project and local files.
-    let ctx = PathContext {
+    PathContext {
         home: r.paths.home.clone(),
         cwd: r.paths.project.clone(),
         source_root: r.paths.project.clone(),
-    };
+    }
+}
+
+pub fn decide(r: &Resolved, call: &ToolCall) -> Verdict {
+    let ctx = path_context(r);
     let (active, pending) = rules(r);
     let mut verdict = evaluate(&active, call, &ctx);
     let later = evaluate(&pending, call, &ctx);
