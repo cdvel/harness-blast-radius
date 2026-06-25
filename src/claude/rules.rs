@@ -177,14 +177,16 @@ const INTERPRETERS: &[&str] = &[
     "xargs", "zsh",
 ];
 
-const SECRET_PATHS: &[&str] = &[
-    ".ssh",
-    ".aws",
+/// Secret files a Read deny rule would usually be written to protect.
+const SECRET_FILES: &[&str] = &[
+    "~/.ssh/id_ed25519",
+    "~/.aws/credentials",
+    "~/.npmrc",
+    "~/.netrc",
+    "~/.gnupg/private-keys-v1.d/key",
+    "~/.config/gcloud/credentials.db",
     ".env",
-    ".npmrc",
-    ".gnupg",
-    "credentials",
-    ".netrc",
+    "config/.env.production",
 ];
 
 fn permissions(r: &Resolved, out: &mut Vec<Finding>) {
@@ -257,8 +259,13 @@ fn permissions(r: &Resolved, out: &mut Vec<Finding>) {
     if !sandbox_on {
         for item in r.settings.items("permissions.deny") {
             let rule_text = text(&item.value);
-            if rule_text.starts_with("Read(") && SECRET_PATHS.iter().any(|p| rule_text.contains(p))
-            {
+            let protects_secret = PermissionRule::parse(&rule_text).is_some_and(|rule| {
+                rule.tool == "Read"
+                    && SECRET_FILES
+                        .iter()
+                        .any(|f| rule.matches_call(&ToolCall::Read(f.to_string()), &ctx))
+            });
+            if protects_secret {
                 out.push(
                     Finding::new(&SECRET_DENY_WITHOUT_SANDBOX, rule_text)
                         .at(path(r, item.srcs[0]), "permissions.deny"),
@@ -686,6 +693,27 @@ mod tests {
             source_root: "/home/u/proj".into(),
         };
         allow_risk(&PermissionRule::parse(rule).unwrap(), &ctx).map(|r| r.id)
+    }
+
+    #[test]
+    fn secret_files_resolve_like_tool_calls() {
+        let ctx = PathContext {
+            home: "/home/u".into(),
+            cwd: "/home/u/proj".into(),
+            source_root: "/home/u/proj".into(),
+        };
+        let protects = |rule: &str| {
+            let rule = PermissionRule::parse(rule).unwrap();
+            SECRET_FILES
+                .iter()
+                .any(|f| rule.matches_call(&ToolCall::Read(f.to_string()), &ctx))
+        };
+        assert!(protects("Read(~/.ssh/**)"));
+        assert!(protects("Read(.env*)"));
+        assert!(protects("Read(//**/credentials*)"));
+        assert!(!protects("Read(**/credentials*)"));
+        assert!(!protects("Read(./docs/.ssh-notes.md)"));
+        assert!(!protects("Read(~/.ssh-backup/**)"));
     }
 
     #[test]
