@@ -52,7 +52,7 @@ medium  unsupported-rule-syntax  Bash(command:rm)
         Permission rule uses syntax Claude Code ignores, so it does not allow, ask or deny what it appears to
         fix: Rewrite as Bash(prefix *), e.g. Bash(rm *)
 
-low     legacy-rule-syntax  Bash(git log:*)
+low     legacy-rule-syntax  Bash(git log:*) and 1 more
         at ~/.claude/settings.json  permissions.allow
         Permission rule uses the legacy :* prefix syntax
         fix: Use the space wildcard form, e.g. Bash(git log *)

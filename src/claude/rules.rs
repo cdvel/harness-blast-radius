@@ -227,16 +227,28 @@ fn permissions(r: &Resolved, out: &mut Vec<Finding>) {
 
     for list in ["allow", "ask", "deny"] {
         let key = format!("permissions.{list}");
+        // Legacy rules are grouped per file: configs often have dozens.
+        let mut legacy: Vec<(SrcId, Vec<String>)> = Vec::new();
         for item in r.settings.items(&key) {
             let rule_text = text(&item.value);
-            let rule = if rule_text.starts_with("Bash(command:") {
-                &UNSUPPORTED_RULE_SYNTAX
+            let src = item.srcs[0];
+            if rule_text.starts_with("Bash(command:") {
+                out.push(
+                    Finding::new(&UNSUPPORTED_RULE_SYNTAX, rule_text).at(path(r, src), key.clone()),
+                );
             } else if rule_text.contains(":*)") {
-                &LEGACY_RULE_SYNTAX
-            } else {
-                continue;
+                match legacy.iter_mut().find(|(s, _)| *s == src) {
+                    Some((_, rules)) => rules.push(rule_text),
+                    None => legacy.push((src, vec![rule_text])),
+                }
+            }
+        }
+        for (src, rules) in legacy {
+            let detail = match rules.len() {
+                1 => rules[0].clone(),
+                n => format!("{} and {} more", rules[0], n - 1),
             };
-            out.push(Finding::new(rule, rule_text).at(path(r, item.srcs[0]), key.clone()));
+            out.push(Finding::new(&LEGACY_RULE_SYNTAX, detail).at(path(r, src), key.clone()));
         }
     }
 
