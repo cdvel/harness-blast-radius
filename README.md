@@ -1,16 +1,33 @@
 # harness-blast-radius
 
-See what Claude Code can do on your machine without asking, and which file allowed it.
+**A static analyzer for Claude Code configuration: what it can do without asking, and which file allowed it.**
 
-A repository's `.claude/settings.json` and `.mcp.json` can approve shell commands, add MCP servers and run hooks. They merge with your user settings, managed policy and `~/.claude.json`, some only apply after you trust the folder, and some are silently ignored. `harness-blast-radius` resolves them the way Claude Code does and reports the result. It only reads files; it never runs Claude Code, hooks or MCP servers.
+You clone a repository, open Claude Code, and it asks whether you trust the folder. Say yes and the repository's own settings apply: commands it approves run without asking, and its hooks run on your machine.
 
-Some of the things it finds:
+`harness-blast-radius` shows what that adds up to. It reads every file Claude Code reads (managed policy, your user settings, the project's `.claude/` and `.mcp.json`, `~/.claude.json`), merges them the same way, and reports what Claude Code can run, read, edit and fetch without asking. It only reads files; nothing is executed.
 
-- Allow rules that approve any shell command, or an interpreter such as `python3 *`, `npx *` or `curl *`
-- MCP servers with credentials in plain text, unpinned `npx` packages, or plain `http`
-- Repositories that approve every MCP server they define, or run commands through `statusLine` or `apiKeyHelper`
-- Settings Claude Code ignores, including whole files dropped for a trailing comma
-- Prompt history and credentials readable by other users on the machine
+## Public repositories
+
+Of 60 public GitHub repositories that commit a `.claude/settings.json`:
+
+- 3 approve every shell command once the folder is trusted
+- 12 approve an interpreter or network tool such as `python *`, `npx:*`, `node:*`, `curl:*` or `xargs:*`, which run arbitrary code or reach the network
+- 14 define hooks that run commands at session start, before tool calls or when Claude Code stops
+- 2 approve every MCP server their `.mcp.json` defines
+- 1 has a trailing comma, so Claude Code ignores the whole file, deny rules included
+
+It also reports credentials in MCP configs, unpinned `npx` packages, plain `http` MCP servers, settings Claude Code ignores, and prompt history readable by other users. See [the rules](docs/rules.md).
+
+## Use cases
+
+- Before trusting a cloned repository: `harness-blast-radius audit` shows what its settings would allow
+- Reviewing a pull request that touches `.claude/` or `.mcp.json`, by hand or in CI with the exit codes
+- Answering "why did that run without asking?" with `why`
+- Testing a managed policy before rolling it out, with `--managed-dir`
+
+## How it differs
+
+A single settings file does not tell you what Claude Code will do. `harness-blast-radius` resolves the configuration Claude Code actually uses: it merges every scope, applies workspace trust, drops the values Claude Code ignores, and evaluates permission rules with Claude Code's matching (compound commands, wrappers, path anchors). A finding names the rule and the file it came from.
 
 ## Example
 
@@ -67,6 +84,10 @@ Each command takes a project directory and defaults to the current one. `why` ac
 
 - [Rules](docs/rules.md)
 - [Claude Code behavior modeled](docs/claude-code.md)
+
+## Name
+
+In incident response, the blast radius is everything a compromised component can reach. For a coding harness, that is whatever it may run, read, edit or fetch without asking.
 
 ## Status
 
