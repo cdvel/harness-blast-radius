@@ -92,3 +92,7 @@ In incident response, the blast radius is everything a compromised component can
 ## Status
 
 Early. Claude Code only; Codex and Cursor are planned. Hooks are listed but not yet audited, plugin contents are not read, and output is text only.
+
+## License
+
+MIT
