@@ -1,5 +1,7 @@
 # harness-blast-radius
 
+[![ci](https://github.com/cdvel/harness-blast-radius/actions/workflows/ci.yml/badge.svg)](https://github.com/cdvel/harness-blast-radius/actions/workflows/ci.yml)
+
 **A static analyzer for Claude Code configuration: what it can do without asking, and which file allowed it.**
 
 You clone a repository, open Claude Code, and it asks whether you trust the folder. Say yes and the repository's own settings apply: commands it approves run without asking, and its hooks run on your machine.
