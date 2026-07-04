@@ -9,7 +9,7 @@ use super::mcp::{McpScope, McpServer, McpStatus};
 use super::permission::{PathContext, PermissionRule, ToolCall};
 use super::resolve::{COMMAND_SETTINGS, Resolved, Status};
 use crate::finding::{Confidence, Finding, Persona, Rule, Severity};
-use crate::merge::{Item, SrcId};
+use crate::merge::{Item, Node, SrcId};
 
 pub fn check(r: &Resolved) -> Vec<Finding> {
     let mut out = Vec::new();
@@ -17,6 +17,7 @@ pub fn check(r: &Resolved) -> Vec<Finding> {
     permissions(r, &mut out);
     mcp(r, &mut out);
     commands(r, &mut out);
+    hooks(r, &mut out);
     sandbox(r, &mut out);
     local_files(r, &mut out);
     out.sort_by(|a, b| {
@@ -497,6 +498,90 @@ fn commands(r: &Resolved, out: &mut Vec<Finding>) {
                     format!("{key}: {}", text(&leaf.value)),
                 )
                 .at(path(r, leaf.src), key),
+            );
+        }
+    }
+}
+
+// Hooks.
+
+pub static REPO_HOOK: Rule = Rule {
+    id: "repo-hook",
+    severity: Severity::Medium,
+    confidence: Confidence::High,
+    persona: Persona::Regular,
+    summary: "Repository hook runs a command or sends hook input to a URL each time its event fires",
+    fix: "Review what the hook runs; move it to user settings if you want it, or remove it from the repo",
+};
+
+/// One hook handler and the group that defines it.
+struct Hook<'a> {
+    event: &'a str,
+    matcher: String,
+    handler: &'a Value,
+    group: &'a Item,
+}
+
+impl Hook<'_> {
+    /// `command` (the default) or `http`; prompt and agent hooks run no code.
+    fn target(&self) -> Option<(&'static str, &str)> {
+        let kind = self
+            .handler
+            .get("type")
+            .and_then(Value::as_str)
+            .unwrap_or("command");
+        let key = match kind {
+            "command" => "command",
+            "http" => "url",
+            _ => return None,
+        };
+        Some((key, self.handler.get(key)?.as_str()?))
+    }
+}
+
+fn hook_handlers(r: &Resolved) -> Vec<Hook<'_>> {
+    let Some(Node::Object(events)) = r.settings.get("hooks") else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for (event, node) in events {
+        let Node::List(groups) = node else { continue };
+        for group in groups {
+            let matcher = group.value.get("matcher").map(text).unwrap_or_default();
+            let matcher = if matcher.is_empty() {
+                "*".into()
+            } else {
+                matcher
+            };
+            let handlers = group.value.get("hooks").and_then(Value::as_array);
+            for handler in handlers.into_iter().flatten() {
+                out.push(Hook {
+                    event,
+                    matcher: matcher.clone(),
+                    handler,
+                    group,
+                });
+            }
+        }
+    }
+    out
+}
+
+fn hooks(r: &Resolved, out: &mut Vec<Finding>) {
+    for hook in hook_handlers(r) {
+        let Some((src, note)) = effective_srcs(r, hook.group, "hooks") else {
+            continue;
+        };
+        let Some((key, target)) = hook.target() else {
+            continue;
+        };
+        if r.scope(src).is_repo() {
+            out.push(
+                Finding::new(
+                    &REPO_HOOK,
+                    format!("{} {}: {key} {target}{note}", hook.event, hook.matcher),
+                )
+                .at(path(r, src), format!("hooks.{}", hook.event)),
             );
         }
     }

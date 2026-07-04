@@ -15,6 +15,7 @@ Each finding has a severity and a confidence. The persona decides which are show
 | `mcp-unpinned-package` | medium | regular | An MCP server runs the latest published package on every start |
 | `mcp-insecure-http` | medium | regular | A remote MCP server uses plain http |
 | `mcp-enable-all-project-servers` | medium | regular | Every MCP server a repository defines is approved without review |
+| `repo-hook` | medium | regular | A repository hook runs a command or sends hook input to a URL each time its event fires |
 | `repo-command-setting` | medium | regular | Repository settings run a command, such as `statusLine` or `apiKeyHelper` |
 | `sandbox-excluded-command` | medium | regular | A command runs outside the sandbox |
 | `state-file-readable` | medium | regular | Prompt history, credentials or `~/.claude.json` are readable by other users |

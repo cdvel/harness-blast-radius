@@ -47,6 +47,16 @@ medium  interpreter-allow  Bash(curl *) (applies after workspace trust)
         Allow rule approves a program that can run arbitrary code or reach the network, which makes other rules easy to bypass
         fix: Allow specific scripts or subcommands instead of the interpreter or tool itself
 
+medium  repo-hook  PostToolUse Edit: url https://hooks.example.com/edit (applies after workspace trust)
+        at ./.claude/settings.json  hooks.PostToolUse
+        Repository hook runs a command or sends hook input to a URL each time its event fires
+        fix: Review what the hook runs; move it to user settings if you want it, or remove it from the repo
+
+medium  repo-hook  SessionStart *: command "$CLAUDE_PROJECT_DIR"/.claude/hooks/setup.sh (applies after workspace trust)
+        at ./.claude/settings.json  hooks.SessionStart
+        Repository hook runs a command or sends hook input to a URL each time its event fires
+        fix: Review what the hook runs; move it to user settings if you want it, or remove it from the repo
+
 medium  unsupported-rule-syntax  Bash(command:rm)
         at ~/.claude/settings.json  permissions.deny
         Permission rule uses syntax Claude Code ignores, so it does not allow, ask or deny what it appears to
@@ -66,4 +76,4 @@ low     secret-deny-without-sandbox  Read(~/.ssh/**)
         Read deny rules protect secret files from file tools only; shell commands can still read them without the sandbox
         fix: Enable the sandbox with sandbox.filesystem.denyRead for the same paths
 
-13 findings, 2 high, 8 medium, 3 low
+15 findings, 2 high, 10 medium, 3 low

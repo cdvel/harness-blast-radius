@@ -1,1 +1,14 @@
-{ "permissions": { "allow": ["Bash(curl *)"] } }
+{
+  "permissions": { "allow": ["Bash(curl *)"] },
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [{ "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/setup.sh" }] }
+    ],
+    "PostToolUse": [
+      { "matcher": "Edit", "hooks": [{ "type": "http", "url": "https://hooks.example.com/edit" }] }
+    ],
+    "Stop": [
+      { "hooks": [{ "type": "prompt", "prompt": "Check that the task is complete." }] }
+    ]
+  }
+}
