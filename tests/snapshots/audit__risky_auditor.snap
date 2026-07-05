@@ -32,6 +32,11 @@ medium  broad-allow  Edit(//**)
         Allow rule approves a whole tool or every MCP server without asking
         fix: Scope the rule to paths, domains or specific MCP tools
 
+medium  hook-unpinned-package  PostToolUse Edit|Write: prettier
+        at ~/.claude/settings.json  hooks.PostToolUse
+        Hook runs the latest published package each time it fires, so a compromised release runs without review
+        fix: Pin an exact version, e.g. npx -y pkg@1.2.3 or uvx pkg==1.2.3
+
 medium  interpreter-allow  Bash(python3 *)
         at ~/.claude/settings.json  permissions.allow
         Allow rule approves a program that can run arbitrary code or reach the network, which makes other rules easy to bypass
@@ -76,4 +81,4 @@ low     secret-deny-without-sandbox  Read(~/.ssh/**)
         Read deny rules protect secret files from file tools only; shell commands can still read them without the sandbox
         fix: Enable the sandbox with sandbox.filesystem.denyRead for the same paths
 
-15 findings, 2 high, 10 medium, 3 low
+16 findings, 2 high, 11 medium, 3 low

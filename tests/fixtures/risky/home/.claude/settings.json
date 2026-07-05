@@ -4,5 +4,10 @@
     "allow": ["Bash", "WebFetch", "mcp__*", "Bash(python3 *)", "Bash(python3 manage.py test)", "Bash(/usr/bin/env *)", "Edit(//**)", "Bash(npm run test *)", "Bash(git log:*)", "Bash(git diff:*)"],
     "deny": ["Read(~/.ssh/**)", "Bash(command:rm)"],
     "additionalDirectories": ["~/"]
+  },
+  "hooks": {
+    "PostToolUse": [
+      { "matcher": "Edit|Write", "hooks": [{ "type": "command", "command": "npx -y prettier --write \"$CLAUDE_FILE_PATHS\"" }] }
+    ]
   }
 }

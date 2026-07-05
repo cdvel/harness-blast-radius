@@ -8,6 +8,7 @@ use super::decide::path_context;
 use super::mcp::{McpScope, McpServer, McpStatus};
 use super::permission::{PathContext, PermissionRule, ToolCall};
 use super::resolve::{COMMAND_SETTINGS, Resolved, Status};
+use super::shell;
 use crate::finding::{Confidence, Finding, Persona, Rule, Severity};
 use crate::merge::{Item, Node, SrcId};
 
@@ -464,6 +465,16 @@ fn unpinned_package(config: &Value) -> Option<String> {
     (!pinned).then(|| pkg.to_string())
 }
 
+/// Unpinned package run by a shell command, e.g. `npx -y pkg`.
+fn command_package(command: &str) -> Option<String> {
+    let mut words = command
+        .split_whitespace()
+        .map(|w| w.trim_matches(['"', '\'']));
+    let program = words.next()?;
+    let args: Vec<Value> = words.map(|w| Value::String(w.to_string())).collect();
+    unpinned_package(&serde_json::json!({ "command": program, "args": args }))
+}
+
 fn insecure_url(url: &str) -> bool {
     let Some(rest) = url.strip_prefix("http://") else {
         return false;
@@ -512,6 +523,15 @@ pub static REPO_HOOK: Rule = Rule {
     persona: Persona::Regular,
     summary: "Repository hook runs a command or sends hook input to a URL each time its event fires",
     fix: "Review what the hook runs; move it to user settings if you want it, or remove it from the repo",
+};
+
+pub static HOOK_UNPINNED_PACKAGE: Rule = Rule {
+    id: "hook-unpinned-package",
+    severity: Severity::Medium,
+    confidence: Confidence::Medium,
+    persona: Persona::Regular,
+    summary: "Hook runs the latest published package each time it fires, so a compromised release runs without review",
+    fix: "Pin an exact version, e.g. npx -y pkg@1.2.3 or uvx pkg==1.2.3",
 };
 
 /// One hook handler and the group that defines it.
@@ -575,13 +595,23 @@ fn hooks(r: &Resolved, out: &mut Vec<Finding>) {
         let Some((key, target)) = hook.target() else {
             continue;
         };
+        let place = format!("{} {}", hook.event, hook.matcher);
+        let key_path = format!("hooks.{}", hook.event);
+        if key == "command" {
+            for pkg in shell::simple_commands(target, true)
+                .iter()
+                .filter_map(|c| command_package(c))
+            {
+                out.push(
+                    Finding::new(&HOOK_UNPINNED_PACKAGE, format!("{place}: {pkg}{note}"))
+                        .at(path(r, src), key_path.clone()),
+                );
+            }
+        }
         if r.scope(src).is_repo() {
             out.push(
-                Finding::new(
-                    &REPO_HOOK,
-                    format!("{} {}: {key} {target}{note}", hook.event, hook.matcher),
-                )
-                .at(path(r, src), format!("hooks.{}", hook.event)),
+                Finding::new(&REPO_HOOK, format!("{place}: {key} {target}{note}"))
+                    .at(path(r, src), key_path),
             );
         }
     }
@@ -876,6 +906,18 @@ mod tests {
             None
         );
         assert_eq!(unpinned_package(&json!({"command": "./bin/server"})), None);
+    }
+
+    #[test]
+    fn command_package_reads_shell_commands() {
+        assert_eq!(
+            command_package("npx -y prettier --write ."),
+            Some("prettier".into())
+        );
+        assert_eq!(command_package("npx block-no-verify@1.1.2"), None);
+        assert_eq!(command_package("uvx 'ruff==0.6.0' check"), None);
+        assert_eq!(command_package("uvx ruff check"), Some("ruff".into()));
+        assert_eq!(command_package("uv run ruff format"), None);
     }
 
     #[test]
