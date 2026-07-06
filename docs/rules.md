@@ -7,6 +7,7 @@ Each finding has a severity and a confidence. The persona decides which are show
 | `bypass-default-mode` | high | regular | `defaultMode` turns permission prompts off |
 | `broad-shell-allow` | high | regular | An allow rule approves every shell command |
 | `mcp-plaintext-secret` | high | regular | An MCP server config holds a credential in plain text (the name is reported, never the value) |
+| `hook-pipe-to-shell` | high | regular | A hook downloads code and runs it, e.g. `curl ... \| sh` or `bash -c "$(curl ...)"` |
 | `ignored-file` | medium | regular | A config file is not loaded, so its deny rules do not apply |
 | `broad-allow` | medium | regular | An allow rule approves a whole tool or every MCP server |
 | `interpreter-allow` | medium | regular | An allow rule approves a program that runs arbitrary code or reaches the network, such as `python3`, `node`, `curl` or `xargs` |

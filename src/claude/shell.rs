@@ -27,6 +27,26 @@ pub fn simple_commands(line: &str, nested: bool) -> Vec<String> {
 
 /// Split at control operators outside quotes and substitutions.
 pub fn split(line: &str) -> Vec<String> {
+    split_ops(line).into_iter().map(|(part, _)| part).collect()
+}
+
+/// Commands joined by pipes, one list per pipeline: `a | b && c` gives
+/// `[[a, b], [c]]`.
+pub fn pipelines(line: &str) -> Vec<Vec<String>> {
+    let mut out: Vec<Vec<String>> = Vec::new();
+    let mut piped = false;
+    for (part, pipe) in split_ops(line) {
+        match out.last_mut() {
+            Some(last) if piped => last.push(part),
+            _ => out.push(vec![part]),
+        }
+        piped = pipe;
+    }
+    out
+}
+
+/// Parts of a command line, each with whether a pipe follows it.
+fn split_ops(line: &str) -> Vec<(String, bool)> {
     let chars: Vec<char> = line.chars().collect();
     let mut parts = Vec::new();
     let mut cur = String::new();
@@ -61,28 +81,33 @@ pub fn split(line: &str) -> Vec<String> {
                 cur.push(c);
             }
             _ if single || double || depth > 0 => cur.push(c),
-            ';' | '\n' => parts.push(std::mem::take(&mut cur)),
+            ';' | '\n' => parts.push((std::mem::take(&mut cur), false)),
             '&' if next == Some('&') => {
-                parts.push(std::mem::take(&mut cur));
+                parts.push((std::mem::take(&mut cur), false));
                 i += 1;
             }
             // `>&`, `&>` and `<&` are redirections, not background operators.
             '&' if matches!(prev, Some('>' | '<')) || next == Some('>') => cur.push(c),
-            '&' => parts.push(std::mem::take(&mut cur)),
-            '|' if next == Some('|') || next == Some('&') => {
-                parts.push(std::mem::take(&mut cur));
+            '&' => parts.push((std::mem::take(&mut cur), false)),
+            '|' if next == Some('|') => {
+                parts.push((std::mem::take(&mut cur), false));
                 i += 1;
             }
-            '|' => parts.push(std::mem::take(&mut cur)),
+            // `|&` pipes stderr too.
+            '|' if next == Some('&') => {
+                parts.push((std::mem::take(&mut cur), true));
+                i += 1;
+            }
+            '|' => parts.push((std::mem::take(&mut cur), true)),
             _ => cur.push(c),
         }
         i += 1;
     }
-    parts.push(cur);
+    parts.push((cur, false));
     parts
         .into_iter()
-        .map(|p| strip_grouping(&p))
-        .filter(|p| !p.is_empty())
+        .map(|(p, pipe)| (strip_grouping(&p), pipe))
+        .filter(|(p, _)| !p.is_empty())
         .collect()
 }
 
@@ -226,6 +251,19 @@ mod tests {
         assert_eq!(split("make 2>&1 | tee log"), vec!["make 2>&1", "tee log"]);
         assert_eq!(split("echo $(a && b)"), vec!["echo $(a && b)"]);
         assert_eq!(split("(cd x; make)"), vec!["cd x", "make"]);
+    }
+
+    #[test]
+    fn groups_pipelines() {
+        assert_eq!(
+            pipelines("curl -s x | sh && echo ok; a |& b || c"),
+            vec![
+                vec!["curl -s x", "sh"],
+                vec!["echo ok"],
+                vec!["a", "b"],
+                vec!["c"],
+            ]
+        );
     }
 
     #[test]
