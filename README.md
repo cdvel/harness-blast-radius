@@ -18,7 +18,7 @@ Of 60 public GitHub repositories that commit a `.claude/settings.json`:
 - 2 approve every MCP server their `.mcp.json` defines
 - 1 has a trailing comma, so Claude Code ignores the whole file, deny rules included
 
-It also reports credentials in MCP configs, unpinned `npx` packages, plain `http` MCP servers, settings Claude Code ignores, and prompt history readable by other users. See [the rules](docs/rules.md).
+It also reports hooks that pipe a download into a shell, credentials in MCP configs, unpinned `npx` packages, plain `http` MCP servers, settings Claude Code ignores, and prompt history readable by other users. See [the rules](docs/rules.md).
 
 ## Use cases
 
@@ -93,7 +93,7 @@ In incident response, the blast radius is everything a compromised component can
 
 ## Status
 
-Early. Claude Code only; Codex and Cursor are planned. Hooks are listed but not yet audited, plugin contents are not read, and output is text only.
+Early. Claude Code only; Codex and Cursor are planned. Plugin contents are not read yet, and output is text only.
 
 ## License
 
