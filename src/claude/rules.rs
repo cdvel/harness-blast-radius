@@ -465,6 +465,16 @@ fn unpinned_package(config: &Value) -> Option<String> {
     (!pinned).then(|| pkg.to_string())
 }
 
+/// First line of a hook command, cut to 80 characters; `show` prints it whole.
+fn short(command: &str) -> String {
+    let line = command.lines().next().unwrap_or("").trim();
+    match line.char_indices().nth(80) {
+        Some((i, _)) => format!("{}...", &line[..i]),
+        None if line.len() < command.trim().len() => format!("{line} ..."),
+        None => line.to_string(),
+    }
+}
+
 const DOWNLOADERS: &[&str] = &["curl", "wget"];
 const SHELLS: &[&str] = &[
     "sh", "bash", "zsh", "dash", "ksh", "fish", "python", "python3", "node", "perl", "ruby",
@@ -653,14 +663,20 @@ fn hooks(r: &Resolved, out: &mut Vec<Finding>) {
         }
         if key == "command" && runs_download(target) {
             out.push(
-                Finding::new(&HOOK_PIPE_TO_SHELL, format!("{place}: {target}{note}"))
-                    .at(path(r, src), key_path.clone()),
+                Finding::new(
+                    &HOOK_PIPE_TO_SHELL,
+                    format!("{place}: {}{note}", short(target)),
+                )
+                .at(path(r, src), key_path.clone()),
             );
         }
         if r.scope(src).is_repo() {
             out.push(
-                Finding::new(&REPO_HOOK, format!("{place}: {key} {target}{note}"))
-                    .at(path(r, src), key_path),
+                Finding::new(
+                    &REPO_HOOK,
+                    format!("{place}: {key} {}{note}", short(target)),
+                )
+                .at(path(r, src), key_path),
             );
         }
     }
@@ -978,6 +994,14 @@ mod tests {
         assert!(!runs_download("curl -s https://api.example.com | jq ."));
         assert!(!runs_download("curl -o x.sh https://x.sh && echo saved"));
         assert!(!runs_download("bash ./scripts/setup.sh"));
+    }
+
+    #[test]
+    fn short_keeps_first_line_and_80_chars() {
+        assert_eq!(short("echo hi"), "echo hi");
+        assert_eq!(short("a\nb"), "a ...");
+        let long = "x".repeat(100);
+        assert_eq!(short(&long), format!("{}...", "x".repeat(80)));
     }
 
     #[test]
