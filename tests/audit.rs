@@ -2,11 +2,17 @@ mod common;
 
 use harness_blast_radius::claude;
 use harness_blast_radius::finding::Persona;
+use harness_blast_radius::style::Style;
 
 fn audit(fixture: &str, persona: Persona) -> String {
     common::run(fixture, |paths| {
         let resolved = claude::resolve(paths.clone());
-        claude::audit::render(&resolved.paths, &claude::rules::check(&resolved), persona)
+        claude::audit::render(
+            &resolved.paths,
+            &claude::rules::check(&resolved),
+            persona,
+            Style::PLAIN,
+        )
     })
 }
 

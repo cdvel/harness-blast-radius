@@ -5,6 +5,7 @@ use clap::{Parser, Subcommand};
 
 use harness_blast_radius::claude;
 use harness_blast_radius::finding::Persona;
+use harness_blast_radius::style::{ColorChoice, Style};
 
 #[derive(Parser)]
 #[command(
@@ -14,6 +15,9 @@ use harness_blast_radius::finding::Persona;
 struct Cli {
     #[command(subcommand)]
     command: Command,
+    /// When to color output
+    #[arg(long, global = true, value_enum, default_value_t = ColorChoice::Auto)]
+    color: ColorChoice,
 }
 
 #[derive(Subcommand)]
@@ -56,7 +60,9 @@ enum Command {
 }
 
 fn main() -> Result<()> {
-    match Cli::parse().command {
+    let cli = Cli::parse();
+    let style = Style::new(cli.color);
+    match cli.command {
         Command::Show { path, managed_dir } => {
             let paths = claude::Paths::detect(&path, managed_dir)?;
             print!("{}", claude::show::render(&claude::resolve(paths)));
@@ -67,7 +73,10 @@ fn main() -> Result<()> {
             managed_dir,
         } => {
             let paths = claude::Paths::detect(&path, managed_dir)?;
-            print!("{}", claude::why::render(&claude::resolve(paths), &call));
+            print!(
+                "{}",
+                claude::why::render(&claude::resolve(paths), &call, style)
+            );
         }
         Command::Audit {
             path,
@@ -80,7 +89,7 @@ fn main() -> Result<()> {
             let findings = claude::rules::check(&resolved);
             print!(
                 "{}",
-                claude::audit::render(&resolved.paths, &findings, persona)
+                claude::audit::render(&resolved.paths, &findings, persona, style)
             );
             // Exit codes encode the highest visible severity: 11 low, 12 medium, 13 high.
             let worst = findings

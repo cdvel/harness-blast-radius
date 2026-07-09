@@ -6,3 +6,4 @@
 pub mod claude;
 pub mod finding;
 pub mod merge;
+pub mod style;

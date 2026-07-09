@@ -8,16 +8,22 @@ use super::decide::{Decision, RuleMatch, Verdict, decide};
 use super::permission::ToolCall;
 use super::resolve::Resolved;
 use crate::merge::SrcId;
+use crate::style::Style;
 
-pub fn render(r: &Resolved, input: &str) -> String {
+pub fn render(r: &Resolved, input: &str, style: Style) -> String {
     let call = ToolCall::parse(input);
     let v = decide(r, &call);
     let mut out = String::new();
-    let _ = writeln!(out, "{input}");
+    let _ = writeln!(out, "{}", style.bold(input));
 
     match v.decision {
         Decision::NoRule => {
-            let _ = writeln!(out, "  no rule matches: {}", mode_outcome(r, &call));
+            let _ = writeln!(
+                out,
+                "  {} {}",
+                style.yellow("no rule matches:"),
+                mode_outcome(r, &call)
+            );
             if !v.uncovered.is_empty() {
                 let _ = writeln!(
                     out,
@@ -27,13 +33,19 @@ pub fn render(r: &Resolved, input: &str) -> String {
             }
         }
         decision => {
-            let _ = writeln!(out, "  {}", decision.name());
+            let name = decision.name();
+            let name = match decision {
+                Decision::Deny => style.red(name),
+                Decision::Ask => style.yellow(name),
+                _ => style.green(name),
+            };
+            let _ = writeln!(out, "  {name}");
             for m in &v.matches {
                 let _ = writeln!(out, "    {}", rule_line(r, m));
             }
         }
     }
-    after_trust(r, &v, &mut out);
+    after_trust(r, &v, style, &mut out);
     out
 }
 
@@ -51,13 +63,14 @@ fn source_label(r: &Resolved, src: SrcId) -> String {
     format!("{} {}", source.scope.name(), r.paths.display(&source.path))
 }
 
-fn after_trust(r: &Resolved, v: &Verdict, out: &mut String) {
+fn after_trust(r: &Resolved, v: &Verdict, style: Style, out: &mut String) {
     if v.after_trust.is_empty() {
         return;
     }
     let _ = writeln!(
         out,
-        "  after workspace trust, these repo rules would also apply:"
+        "  {}",
+        style.yellow("after workspace trust, these repo rules would also apply:")
     );
     for m in &v.after_trust {
         let _ = writeln!(

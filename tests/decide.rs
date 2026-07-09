@@ -3,6 +3,7 @@ mod common;
 use std::fmt::Write;
 
 use harness_blast_radius::claude::{self, decide::decide, permission::ToolCall};
+use harness_blast_radius::style::Style;
 
 /// Decision and deciding rules for each call, one line per call.
 fn decisions(fixture: &str, calls: &[&str]) -> String {
@@ -63,7 +64,7 @@ fn why_output() {
             "Read(~/.ssh/id_ed25519)",
         ]
         .iter()
-        .map(|c| claude::why::render(&r, c))
+        .map(|c| claude::why::render(&r, c, Style::PLAIN))
         .collect::<Vec<_>>()
         .join("\n")
     });
@@ -73,6 +74,10 @@ fn why_output() {
 #[test]
 fn why_after_trust() {
     insta::assert_snapshot!(common::run("risky", |paths| {
-        claude::why::render(&claude::resolve(paths.clone()), "curl https://example.com")
+        claude::why::render(
+            &claude::resolve(paths.clone()),
+            "curl https://example.com",
+            Style::PLAIN,
+        )
     }));
 }
