@@ -1,10 +1,11 @@
 mod common;
 
 use harness_blast_radius::claude;
+use harness_blast_radius::style::Style;
 
 fn show(fixture: &str) -> String {
     common::run(fixture, |paths| {
-        claude::show::render(&claude::resolve(paths.clone()))
+        claude::show::render(&claude::resolve(paths.clone()), Style::PLAIN)
     })
 }
 

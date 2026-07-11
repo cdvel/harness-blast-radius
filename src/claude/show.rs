@@ -1,6 +1,6 @@
 //! Terminal rendering of the effective configuration (`show`).
 
-use std::fmt::Write;
+use std::fmt::{self, Write};
 
 use serde_json::Value;
 
@@ -8,9 +8,26 @@ use super::load::{Kind, Scope};
 use super::mcp::{McpServer, McpStatus};
 use super::resolve::{COMMAND_SETTINGS, Resolved, Status, Trust};
 use crate::merge::{Item, Node, SrcId};
+use crate::style::Style;
 
-pub fn render(r: &Resolved) -> String {
-    let mut out = String::new();
+/// Rendered text plus the style for headings.
+struct Out {
+    text: String,
+    style: Style,
+}
+
+impl Write for Out {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.text.push_str(s);
+        Ok(())
+    }
+}
+
+pub fn render(r: &Resolved, style: Style) -> String {
+    let mut out = Out {
+        text: String::new(),
+        style,
+    };
     sources(r, &mut out);
     trust(r, &mut out);
     permissions(r, &mut out);
@@ -21,7 +38,7 @@ pub fn render(r: &Resolved) -> String {
     sandbox(r, &mut out);
     plugins(r, &mut out);
     dropped(r, &mut out);
-    out
+    out.text
 }
 
 fn label(r: &Resolved, src: SrcId) -> String {
@@ -72,12 +89,13 @@ fn text(v: &Value) -> String {
     }
 }
 
-fn heading(out: &mut String, title: &str) {
+fn heading(out: &mut Out, title: &str) {
+    let title = out.style.bold(title);
     let _ = writeln!(out, "\n{title}");
 }
 
 /// Print rows as two aligned columns plus a trailing note.
-fn rows(out: &mut String, indent: &str, rows: &[(String, String, String)]) {
+fn rows(out: &mut Out, indent: &str, rows: &[(String, String, String)]) {
     let width = rows
         .iter()
         .map(|(a, _, _)| a.chars().count())
@@ -88,12 +106,12 @@ fn rows(out: &mut String, indent: &str, rows: &[(String, String, String)]) {
     }
 }
 
-fn sources(r: &Resolved, out: &mut String) {
-    let _ = writeln!(
-        out,
+fn sources(r: &Resolved, out: &mut Out) {
+    let title = out.style.bold(&format!(
         "Claude Code configuration for {}",
         r.paths.project.display()
-    );
+    ));
+    let _ = writeln!(out, "{title}");
     heading(out, "Sources");
     let list: Vec<_> = r
         .loaded
@@ -124,7 +142,7 @@ fn sources(r: &Resolved, out: &mut String) {
     }
 }
 
-fn trust(r: &Resolved, out: &mut String) {
+fn trust(r: &Resolved, out: &mut Out) {
     let line = match r.trust {
         Trust::Accepted => "accepted",
         Trust::NotAccepted => {
@@ -134,10 +152,11 @@ fn trust(r: &Resolved, out: &mut String) {
             "unknown (no entry in ~/.claude.json): repo allow rules, env and hooks wait for the trust dialog"
         }
     };
-    let _ = writeln!(out, "\nWorkspace trust: {line}");
+    let title = out.style.bold("Workspace trust:");
+    let _ = writeln!(out, "\n{title} {line}");
 }
 
-fn permissions(r: &Resolved, out: &mut String) {
+fn permissions(r: &Resolved, out: &mut Out) {
     heading(out, "Permissions");
     match r.settings.leaf("permissions.defaultMode") {
         Some(leaf) => {
@@ -187,7 +206,7 @@ fn item_rows(r: &Resolved, items: &[Item], key: &str) -> Vec<(String, String, St
         .collect()
 }
 
-fn hooks(r: &Resolved, out: &mut String) {
+fn hooks(r: &Resolved, out: &mut Out) {
     heading(out, "Hooks");
     let Some(Node::Object(events)) = r.settings.get("hooks") else {
         let _ = writeln!(out, "  none");
@@ -227,7 +246,7 @@ fn handler(h: &Value) -> String {
     format!("{kind}: {target}")
 }
 
-fn mcp(r: &Resolved, out: &mut String) {
+fn mcp(r: &Resolved, out: &mut Out) {
     heading(out, "MCP servers");
     if r.mcp.is_empty() {
         let _ = writeln!(out, "  none");
@@ -298,7 +317,7 @@ fn mcp_note(s: &McpServer) -> String {
     format!("{status}  (overrides {})", names.join(", "))
 }
 
-fn commands(r: &Resolved, out: &mut String) {
+fn commands(r: &Resolved, out: &mut Out) {
     heading(out, "Settings that run commands");
     let mut list = Vec::new();
     for &key in COMMAND_SETTINGS {
@@ -316,7 +335,7 @@ fn commands(r: &Resolved, out: &mut String) {
     rows(out, "  ", &list);
 }
 
-fn env(r: &Resolved, out: &mut String) {
+fn env(r: &Resolved, out: &mut Out) {
     heading(out, "Environment (values hidden)");
     let Some(Node::Object(vars)) = r.settings.get("env") else {
         let _ = writeln!(out, "  none");
@@ -340,7 +359,7 @@ fn env(r: &Resolved, out: &mut String) {
     rows(out, "  ", &list);
 }
 
-fn sandbox(r: &Resolved, out: &mut String) {
+fn sandbox(r: &Resolved, out: &mut Out) {
     heading(out, "Sandbox");
     let Some(node) = r.settings.get("sandbox") else {
         let _ = writeln!(out, "  not configured (off by default)");
@@ -377,7 +396,7 @@ fn flatten(r: &Resolved, path: &str, node: &Node, out: &mut Vec<(String, String,
     }
 }
 
-fn plugins(r: &Resolved, out: &mut String) {
+fn plugins(r: &Resolved, out: &mut Out) {
     heading(
         out,
         "Plugins (hooks and MCP servers from plugins are not read yet)",
@@ -400,7 +419,7 @@ fn plugins(r: &Resolved, out: &mut String) {
     rows(out, "  ", &list);
 }
 
-fn dropped(r: &Resolved, out: &mut String) {
+fn dropped(r: &Resolved, out: &mut Out) {
     if r.dropped.is_empty() {
         return;
     }

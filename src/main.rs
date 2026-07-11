@@ -65,7 +65,7 @@ fn main() -> Result<()> {
     match cli.command {
         Command::Show { path, managed_dir } => {
             let paths = claude::Paths::detect(&path, managed_dir)?;
-            print!("{}", claude::show::render(&claude::resolve(paths)));
+            print!("{}", claude::show::render(&claude::resolve(paths), style));
         }
         Command::Why {
             call,
