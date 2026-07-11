@@ -8,17 +8,17 @@ Rust 1.85+ · Linux and macOS · MIT license · Claude Code supported; Codex and
 
 ![harness-blast-radius audit reporting a hook that pipes a download into sh, a plaintext MCP credential, an interpreter allow rule and a repository hook](docs/audit.svg)
 
-You clone a repository, open Claude Code, and it asks whether you trust the folder. Say yes and the repository's own settings apply. A hook can download a script and run it at the start of every session. An allow rule like `Bash(python3 *)` lets Claude Code read the `.env` file that the same settings deny.
+> You clone a repository, open Claude Code, and it asks whether you trust the folder. If you say yes, the repository's settings take effect: a hook in them can run a downloaded script every time a session starts, and an allow rule such as `Bash(python3 *)` lets Python read the `.env` file those settings deny to Claude Code's file tools.
 
 `harness-blast-radius` shows what that adds up to. It reads every file Claude Code reads (managed policy, your user settings, the project's `.claude/` and `.mcp.json`, `~/.claude.json`) and reports what Claude Code can run, read, edit and fetch without asking. It only reads files; nothing is executed.
 
 ## Public repositories
 
-Of 60 public GitHub repositories that commit a `.claude/settings.json`:
+In October 2026, a GitHub code search for `.claude/settings.json` files with a `permissions` key returned 60 repositories. Running `harness-blast-radius audit` on them:
 
 - 3 approve every shell command once the folder is trusted
 - 12 approve an interpreter or network tool such as `python *`, `npx:*`, `node:*`, `curl:*` or `xargs:*`, which run arbitrary code or reach the network
-- 14 define hooks that run commands at session start, before tool calls or when Claude Code stops
+- 12 define hooks that run commands at session start, before tool calls or when Claude Code stops
 - 2 approve every MCP server their `.mcp.json` defines
 - 1 has a trailing comma, so Claude Code ignores the whole file, deny rules included
 
