@@ -10,7 +10,7 @@ use harness_blast_radius::style::{ColorChoice, Style};
 #[derive(Parser)]
 #[command(
     version,
-    about = "Audit what your AI coding harness configuration allows"
+    about = "Audit what Claude Code's configuration lets it do without asking"
 )]
 struct Cli {
     #[command(subcommand)]
