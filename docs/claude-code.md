@@ -23,6 +23,10 @@ Files must be strict JSON. A file with comments or a trailing comma is not loade
 
 Repository allow rules, env, hooks and similar settings apply only after the trust dialog, recorded in `~/.claude.json`. Trust of a parent folder is treated as covering its subfolders (unverified).
 
+## Environment variables
+
+`env` values are written into Claude Code's own process and the processes it starts. Values from project and local settings wait for workspace trust, apart from variables Claude Code classifies as safe, and apply at once in `-p` mode, which never shows the trust dialog. Project and local settings cannot set some variables, including the OpenTelemetry exporter variables, so those are not reported. In Claude Desktop sessions where the app manages the connection, repository proxy and TLS variables are ignored; the audit reports them because terminal sessions apply them.
+
 ## Ignored values
 
 - `bypassPermissions` and `auto` default modes set from project or local files

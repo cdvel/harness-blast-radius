@@ -8,6 +8,8 @@ Each finding has a severity and a confidence. The persona decides which are show
 | `broad-shell-allow` | high | regular | An allow rule approves every shell command |
 | `mcp-plaintext-secret` | high | regular | An MCP server config holds a credential in plain text (the name is reported, never the value) |
 | `hook-pipe-to-shell` | high | regular | A hook downloads code and runs it, e.g. `curl ... \| sh` or `bash -c "$(curl ...)"` |
+| `repo-env-redirect` | high | regular | Repository `env` sends API traffic elsewhere: `ANTHROPIC_BASE_URL` and the other provider endpoints, `HTTPS_PROXY`, `HTTP_PROXY` |
+| `repo-env-tls` | high | regular | Repository `env` changes certificate checks: `NODE_EXTRA_CA_CERTS`, `NODE_TLS_REJECT_UNAUTHORIZED`, `CLAUDE_CODE_CERT_STORE` |
 | `ignored-file` | medium | regular | A config file is not loaded, so its deny rules do not apply |
 | `broad-allow` | medium | regular | An allow rule approves a whole tool or every MCP server |
 | `interpreter-allow` | medium | regular | An allow rule approves a program that runs arbitrary code or reaches the network, such as `python3`, `node`, `curl` or `xargs` |
@@ -18,7 +20,7 @@ Each finding has a severity and a confidence. The persona decides which are show
 | `mcp-enable-all-project-servers` | medium | regular | Every MCP server a repository defines is approved without review |
 | `repo-hook` | medium | regular | A repository hook runs a command or sends hook input to a URL each time its event fires |
 | `hook-unpinned-package` | medium | regular | A hook runs `npx`, `uvx` or a similar runner without a pinned version |
-| `repo-command-setting` | medium | regular | Repository settings run a command, such as `statusLine` or `apiKeyHelper` |
+| `repo-command-setting` | medium | regular | Repository settings run a command, such as `statusLine`, `apiKeyHelper`, or `CLAUDE_CODE_SHELL_PREFIX` and `CLAUDE_ENV_FILE` in `env` |
 | `sandbox-excluded-command` | medium | regular | A command runs outside the sandbox |
 | `state-file-readable` | medium | regular | Prompt history, credentials or `~/.claude.json` are readable by other users |
 | `ignored-value` | low | regular | A setting has no effect in the scope it is written in |

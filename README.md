@@ -26,6 +26,7 @@ In October 2026, a GitHub code search for `.claude/settings.json` files with a `
 
 - **Permissions:** allow rules that approve every shell command, an interpreter, a whole tool or every MCP server; modes that turn prompts off; rule syntax Claude Code ignores
 - **Hooks:** repository hooks, downloads piped into a shell, unpinned `npx` and `uvx` packages
+- **Environment:** repository `env` that sends API traffic through another server (`ANTHROPIC_BASE_URL`, `HTTPS_PROXY`), changes certificate checks, or wraps every shell command
 - **MCP servers:** plaintext credentials (names only, never values), unpinned packages, plain `http`, project servers approved without review
 - **Config files:** files Claude Code does not load, values ignored in the scope they are written in, repository settings that run commands such as `apiKeyHelper`
 - **Sandbox:** sandbox off, excluded commands, unsandboxed retries and fallback
