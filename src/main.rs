@@ -9,6 +9,7 @@ use harness_blast_radius::style::{ColorChoice, Style};
 
 #[derive(Parser)]
 #[command(
+    name = "harness-blast",
     version,
     about = "Audit what Claude Code's configuration lets it do without asking"
 )]

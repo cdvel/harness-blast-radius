@@ -6,7 +6,7 @@
 
 Rust 1.85+ · Linux and macOS · MIT license · Claude Code supported; Codex and Cursor not yet
 
-![harness-blast-radius audit reporting a hook that pipes a download into sh, a plaintext MCP credential, an interpreter allow rule and a repository hook](docs/audit.svg)
+![harness-blast audit reporting a hook that pipes a download into sh, a plaintext MCP credential, an interpreter allow rule and a repository hook](docs/audit.svg)
 
 > You clone a repository, open Claude Code, and it asks whether you trust the folder. If you say yes, the repository's settings take effect: a hook in them can run a downloaded script every time a session starts, and an allow rule such as `Bash(python3 *)` lets Python read the `.env` file those settings deny to Claude Code's file tools.
 
@@ -14,7 +14,7 @@ Rust 1.85+ · Linux and macOS · MIT license · Claude Code supported; Codex and
 
 ## Public repositories
 
-In October 2026, a GitHub code search for `.claude/settings.json` files with a `permissions` key returned 60 repositories. Running `harness-blast-radius audit` on them:
+In October 2026, a GitHub code search for `.claude/settings.json` files with a `permissions` key returned 60 repositories. Running `harness-blast audit` on them:
 
 - 3 approve every shell command once the folder is trusted
 - 12 approve an interpreter or network tool such as `python *`, `npx:*`, `node:*`, `curl:*` or `xargs:*`, which run arbitrary code or reach the network
@@ -36,12 +36,12 @@ Each rule, its severity and the exit codes are in [docs/rules.md](docs/rules.md)
 
 ## Example
 
-1. You clone `acme-api`. Before answering the trust prompt, you run `harness-blast-radius audit` and get the four findings at the top of this page.
+1. You clone `acme-api`. Before answering the trust prompt, you run `harness-blast audit` and get the four findings at the top of this page.
 2. Trusting the folder would run that script at the start of every session.
 3. The repository denies `Read(.env)`, which stops Claude Code's file tools:
 
    ```console
-   $ harness-blast-radius why "Read(.env)"
+   $ harness-blast why "Read(.env)"
    Read(.env)
      deny
        Read(.env)  project ./.claude/settings.json
@@ -50,7 +50,7 @@ Each rule, its severity and the exit codes are in [docs/rules.md](docs/rules.md)
 4. `why` shows the same file read through Python asks today, and would be approved once the folder is trusted:
 
    ```console
-   $ harness-blast-radius why "python3 -c 'print(open(\".env\").read())'"
+   $ harness-blast why "python3 -c 'print(open(\".env\").read())'"
    python3 -c 'print(open(".env").read())'
      no rule matches: Claude Code asks (default mode)
    ...
@@ -70,12 +70,14 @@ A single settings file does not tell you what Claude Code will do. `harness-blas
 cargo install --git https://github.com/cdvel/harness-blast-radius
 ```
 
+This installs the `harness-blast` command.
+
 ## Usage
 
 ```sh
-harness-blast-radius show            # effective configuration and the source of every value
-harness-blast-radius why "<call>"    # allow, ask or deny, and the deciding rule
-harness-blast-radius audit           # risky settings, highest severity first
+harness-blast show            # effective configuration and the source of every value
+harness-blast why "<call>"    # allow, ask or deny, and the deciding rule
+harness-blast audit           # risky settings, highest severity first
 ```
 
 Each command takes a project directory and defaults to the current one. `why` accepts a shell command or a tool call such as `"Read(~/.ssh/id_ed25519)"`, `"WebFetch(https://docs.rs)"` or `"mcp__github__create_issue"`. `--managed-dir` tests a managed policy before you roll it out. `audit --persona pedantic` or `auditor` shows weaker signals; the exit code is 11, 12 or 13 when the highest finding is low, medium or high, and `--no-exit-codes` exits 0.

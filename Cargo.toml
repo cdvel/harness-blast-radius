@@ -5,6 +5,10 @@ edition = "2024"
 rust-version = "1.85"
 license = "MIT"
 
+[[bin]]
+name = "harness-blast"
+path = "src/main.rs"
+
 [dependencies]
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
