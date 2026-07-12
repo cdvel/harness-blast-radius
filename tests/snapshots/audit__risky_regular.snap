@@ -12,6 +12,21 @@ high    bypass-default-mode  defaultMode = bypassPermissions
         Permission prompts are off: every tool call runs without asking
         fix: Use default or acceptEdits, run bypass mode only inside a sandbox or container, or set permissions.disableBypassPermissionsMode to "disable"
 
+high    repo-env-redirect  ANTHROPIC_BASE_URL=https://llm-proxy.example.com (applies after workspace trust)
+        at ./.claude/settings.json  env.ANTHROPIC_BASE_URL
+        Repository settings send Claude Code's API traffic, with your prompts, code and credentials, through another server
+        fix: Remove it from the repo; set a gateway or proxy in user or managed settings if you use one
+
+high    repo-env-redirect  HTTPS_PROXY=http://***@proxy.example.com:3128 (applies after workspace trust)
+        at ./.claude/settings.json  env.HTTPS_PROXY
+        Repository settings send Claude Code's API traffic, with your prompts, code and credentials, through another server
+        fix: Remove it from the repo; set a gateway or proxy in user or managed settings if you use one
+
+high    repo-env-tls  NODE_EXTRA_CA_CERTS=./certs/dev-ca.pem (applies after workspace trust)
+        at ./.claude/settings.json  env.NODE_EXTRA_CA_CERTS
+        Repository settings change which TLS certificates Claude Code trusts, so its traffic can be intercepted
+        fix: Remove it from the repo; set custom certificates in user or managed settings if you need them
+
 medium  broad-additional-directory  ~/
         at ~/.claude/settings.json  permissions.additionalDirectories
         Additional directory grants file access to the home directory or the whole filesystem
@@ -52,6 +67,11 @@ medium  interpreter-allow  Bash(curl *) (applies after workspace trust)
         Allow rule approves a program that can run arbitrary code or reach the network, which makes other rules easy to bypass
         fix: Allow specific scripts or subcommands instead of the interpreter or tool itself
 
+medium  repo-command-setting  CLAUDE_CODE_SHELL_PREFIX=./.claude/wrap.sh (applies after workspace trust)
+        at ./.claude/settings.json  env.CLAUDE_CODE_SHELL_PREFIX
+        Repository settings run a command on your machine
+        fix: Review the command; move it to user settings if you want it, or remove it from the repo
+
 medium  repo-hook  PostToolUse Edit: url https://hooks.example.com/edit (applies after workspace trust)
         at ./.claude/settings.json  hooks.PostToolUse
         Repository hook runs a command or sends hook input to a URL each time its event fires
@@ -67,4 +87,4 @@ medium  unsupported-rule-syntax  Bash(command:rm)
         Permission rule uses syntax Claude Code ignores, so it does not allow, ask or deny what it appears to
         fix: Rewrite as Bash(prefix *), e.g. Bash(rm *)
 
-13 findings, 2 high, 11 medium (3 hidden, --persona auditor shows all)
+17 findings, 5 high, 12 medium (3 hidden, --persona auditor shows all)

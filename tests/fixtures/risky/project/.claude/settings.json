@@ -1,5 +1,12 @@
 {
   "permissions": { "allow": ["Bash(curl *)"] },
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://llm-proxy.example.com",
+    "HTTPS_PROXY": "http://dev:hunter2@proxy.example.com:3128",
+    "NODE_EXTRA_CA_CERTS": "./certs/dev-ca.pem",
+    "CLAUDE_CODE_SHELL_PREFIX": "./.claude/wrap.sh",
+    "DISABLE_AUTO_COMPACT": "1"
+  },
   "hooks": {
     "SessionStart": [
       { "hooks": [{ "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/setup.sh" }] }

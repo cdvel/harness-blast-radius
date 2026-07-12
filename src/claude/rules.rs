@@ -18,6 +18,7 @@ pub fn check(r: &Resolved) -> Vec<Finding> {
     permissions(r, &mut out);
     mcp(r, &mut out);
     commands(r, &mut out);
+    env(r, &mut out);
     hooks(r, &mut out);
     sandbox(r, &mut out);
     local_files(r, &mut out);
@@ -558,6 +559,93 @@ fn commands(r: &Resolved, out: &mut Vec<Finding>) {
     }
 }
 
+// Environment variables.
+
+pub static REPO_ENV_REDIRECT: Rule = Rule {
+    id: "repo-env-redirect",
+    severity: Severity::High,
+    confidence: Confidence::High,
+    persona: Persona::Regular,
+    summary: "Repository settings send Claude Code's API traffic, with your prompts, code and credentials, through another server",
+    fix: "Remove it from the repo; set a gateway or proxy in user or managed settings if you use one",
+};
+
+pub static REPO_ENV_TLS: Rule = Rule {
+    id: "repo-env-tls",
+    severity: Severity::High,
+    confidence: Confidence::High,
+    persona: Persona::Regular,
+    summary: "Repository settings change which TLS certificates Claude Code trusts, so its traffic can be intercepted",
+    fix: "Remove it from the repo; set custom certificates in user or managed settings if you need them",
+};
+
+/// Variables that change where API traffic goes.
+const REDIRECT_VARS: &[&str] = &[
+    "ANTHROPIC_BASE_URL",
+    "ANTHROPIC_BEDROCK_BASE_URL",
+    "ANTHROPIC_BEDROCK_MANTLE_BASE_URL",
+    "ANTHROPIC_VERTEX_BASE_URL",
+    "ANTHROPIC_FOUNDRY_BASE_URL",
+    "ANTHROPIC_AWS_BASE_URL",
+    "HTTPS_PROXY",
+    "HTTP_PROXY",
+    "https_proxy",
+    "http_proxy",
+];
+
+/// Variables that change certificate checks.
+const TLS_VARS: &[&str] = &[
+    "NODE_EXTRA_CA_CERTS",
+    "NODE_TLS_REJECT_UNAUTHORIZED",
+    "CLAUDE_CODE_CERT_STORE",
+];
+
+/// Variables that run a script around or before every shell command.
+const COMMAND_VARS: &[&str] = &["CLAUDE_CODE_SHELL_PREFIX", "CLAUDE_ENV_FILE"];
+
+fn env(r: &Resolved, out: &mut Vec<Finding>) {
+    let Some(Node::Object(vars)) = r.settings.get("env") else {
+        return;
+    };
+    for (name, node) in vars {
+        let Node::Scalar(leaf) = node else { continue };
+        let rule = if REDIRECT_VARS.contains(&name.as_str()) {
+            &REPO_ENV_REDIRECT
+        } else if TLS_VARS.contains(&name.as_str()) {
+            &REPO_ENV_TLS
+        } else if COMMAND_VARS.contains(&name.as_str()) {
+            &REPO_COMMAND_SETTING
+        } else {
+            continue;
+        };
+        if !r.scope(leaf.src).is_repo() {
+            continue;
+        }
+        let note = match r.status(leaf.src, "env") {
+            Status::Active => "",
+            Status::AfterTrust => " (applies after workspace trust)",
+            Status::Ignored(_) => continue,
+        };
+        let value = hide_userinfo(&text(&leaf.value));
+        out.push(
+            Finding::new(rule, format!("{name}={value}{note}"))
+                .at(path(r, leaf.src), format!("env.{name}")),
+        );
+    }
+}
+
+/// Replace a `user:pass@` part of a URL, which proxy URLs can carry.
+fn hide_userinfo(value: &str) -> String {
+    let Some((scheme, rest)) = value.split_once("://") else {
+        return value.to_string();
+    };
+    let authority = rest.split('/').next().unwrap_or("");
+    match authority.rsplit_once('@') {
+        Some((_, host)) => format!("{scheme}://***@{host}{}", &rest[authority.len()..]),
+        None => value.to_string(),
+    }
+}
+
 // Hooks.
 
 pub static REPO_HOOK: Rule = Rule {
@@ -994,6 +1082,19 @@ mod tests {
         assert!(!runs_download("curl -s https://api.example.com | jq ."));
         assert!(!runs_download("curl -o x.sh https://x.sh && echo saved"));
         assert!(!runs_download("bash ./scripts/setup.sh"));
+    }
+
+    #[test]
+    fn hide_userinfo_masks_proxy_credentials() {
+        assert_eq!(
+            hide_userinfo("http://user:pw@proxy.example.com:8080/x"),
+            "http://***@proxy.example.com:8080/x"
+        );
+        assert_eq!(
+            hide_userinfo("https://proxy.example.com"),
+            "https://proxy.example.com"
+        );
+        assert_eq!(hide_userinfo("/etc/ca.pem"), "/etc/ca.pem");
     }
 
     #[test]
