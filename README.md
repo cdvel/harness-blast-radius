@@ -1,6 +1,6 @@
 # harness-blast-radius
 
-[![CI](https://github.com/cdvel/harness-blast-radius/actions/workflows/ci.yml/badge.svg)](https://github.com/cdvel/harness-blast-radius/actions/workflows/ci.yml) ![License: MIT](https://img.shields.io/badge/license-MIT-blue) ![Rust 1.85+](https://img.shields.io/badge/rust-1.85%2B-orange)
+[![CI](https://github.com/cdvel/harness-blast-radius/actions/workflows/ci.yml/badge.svg)](https://github.com/cdvel/harness-blast-radius/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/cdvel/harness-blast-radius)](https://github.com/cdvel/harness-blast-radius/releases/latest) ![License: MIT](https://img.shields.io/badge/license-MIT-blue) ![Rust 1.85+](https://img.shields.io/badge/rust-1.85%2B-orange)
 
 **A static analyzer for Claude Code configuration: what it can do without asking, and which file allowed it.**
 
@@ -66,11 +66,22 @@ A single settings file does not tell you what Claude Code will do. `harness-blas
 
 ## Installation
 
+Download the binary for your platform from the [latest release](https://github.com/cdvel/harness-blast-radius/releases/latest) (`x86_64` or `aarch64`, `unknown-linux-musl` or `apple-darwin`) and put it on your `PATH`:
+
 ```sh
-cargo install --git https://github.com/cdvel/harness-blast-radius
+curl -fsSLO https://github.com/cdvel/harness-blast-radius/releases/latest/download/harness-blast-x86_64-unknown-linux-musl.tar.gz
+tar xzf harness-blast-x86_64-unknown-linux-musl.tar.gz
+install harness-blast-x86_64-unknown-linux-musl/harness-blast ~/.local/bin/
+harness-blast --version
 ```
 
-This installs the `harness-blast` command.
+Linux binaries are static. Each archive has a build provenance attestation; `gh attestation verify <archive> --repo cdvel/harness-blast-radius` checks it was built by this repository's release workflow.
+
+To build from source instead (Rust 1.85+):
+
+```sh
+cargo install --locked --git https://github.com/cdvel/harness-blast-radius
+```
 
 ## Usage
 
