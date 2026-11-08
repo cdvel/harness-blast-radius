@@ -75,7 +75,7 @@ install harness-blast-x86_64-unknown-linux-musl/harness-blast ~/.local/bin/
 harness-blast --version
 ```
 
-Linux binaries are static. Each archive has a build provenance attestation; `gh attestation verify <archive> --repo cdvel/harness-blast-radius` checks it was built by this repository's release workflow.
+Linux binaries are static. macOS binaries are not notarized; if you downloaded the archive with a browser, run `xattr -d com.apple.quarantine harness-blast` before the first run. Each archive has a build provenance attestation; `gh attestation verify <archive> --repo cdvel/harness-blast-radius` checks it was built by this repository's release workflow.
 
 To build from source instead (Rust 1.85+):
 
