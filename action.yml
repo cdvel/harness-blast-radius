@@ -85,7 +85,8 @@ runs:
         SARIF_FILE: ${{ inputs.sarif-file }}
         BIN: ${{ steps.install.outputs.bin || 'harness-blast' }}
       run: |
-        set -uo pipefail
+        # bash runs with -e; the exit codes are handled below.
+        set +e -uo pipefail
         # Audit the repository alone: the runner's home and managed policy
         # are not what the repository adds.
         empty="$RUNNER_TEMP/harness-blast-empty"
