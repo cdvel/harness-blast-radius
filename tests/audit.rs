@@ -2,18 +2,19 @@ mod common;
 
 use harness_blast_radius::claude;
 use harness_blast_radius::finding::{Finding, Persona};
-use harness_blast_radius::report;
+use harness_blast_radius::report::{self, Counts};
 use harness_blast_radius::style::Style;
 
 fn audit(fixture: &str, persona: Persona) -> String {
     common::run(fixture, |paths| {
         let resolved = claude::resolve(paths.clone());
-        claude::audit::render(
-            &resolved.paths,
-            &claude::rules::check(&resolved),
-            persona,
-            Style::PLAIN,
-        )
+        let findings = claude::rules::check(&resolved);
+        let shown: Vec<&Finding> = findings.iter().filter(|f| f.visible(persona)).collect();
+        let counts = Counts {
+            hidden: findings.len() - shown.len(),
+            ..Counts::default()
+        };
+        claude::audit::render(&resolved.paths, &shown, counts, Style::PLAIN)
     })
 }
 
@@ -29,7 +30,11 @@ fn machine(fixture: &str, sarif: bool) -> String {
         if sarif {
             report::sarif(project, &shown)
         } else {
-            report::json(project, &shown, findings.len() - shown.len())
+            let counts = Counts {
+                hidden: findings.len() - shown.len(),
+                ..Counts::default()
+            };
+            report::json(project, &shown, counts)
         }
     })
     .replace(env!("CARGO_PKG_VERSION"), "<version>")
@@ -117,5 +122,55 @@ fn readable_state_files() {
             ("state-file-readable", "~/.claude/history.jsonl".to_string()),
             ("state-dir-readable", "file-history".to_string()),
         ]
+    );
+}
+
+#[test]
+fn baseline_accepts_known_findings() {
+    use harness_blast_radius::baseline::{self, Baseline};
+
+    let out = common::run("risky", |paths| {
+        let resolved = claude::resolve(paths.clone());
+        let findings = claude::rules::check(&resolved);
+        let shown: Vec<&Finding> = findings
+            .iter()
+            .filter(|f| f.visible(Persona::Regular))
+            .collect();
+        let display = |p: &std::path::Path| resolved.paths.display(p);
+
+        // Accept everything except the repo hooks, and add an entry that matches nothing.
+        let written: serde_json::Value =
+            serde_json::from_str(&baseline::write(&shown, &display)).unwrap();
+        let mut entries: Vec<serde_json::Value> = written["accepted"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|e| e["rule"] != "repo-hook")
+            .cloned()
+            .collect();
+        assert!(
+            entries
+                .iter()
+                .all(|e| !e["detail"].as_str().unwrap().contains("workspace trust")),
+            "trust note must not be part of the baseline"
+        );
+        entries.push(serde_json::json!({ "rule": "repo-hook", "detail": "gone" }));
+        let file = resolved.paths.project.join("baseline.json");
+        std::fs::write(
+            &file,
+            serde_json::json!({ "accepted": entries }).to_string(),
+        )
+        .unwrap();
+
+        let applied = Baseline::load(&file).unwrap().apply(shown, &display);
+        let kept: Vec<&str> = applied.kept.iter().map(|f| f.rule.id).collect();
+        format!(
+            "kept {kept:?}\naccepted {}\nstale {}",
+            applied.accepted, applied.stale
+        )
+    });
+    assert_eq!(
+        out,
+        "kept [\"repo-hook\", \"repo-hook\"]\naccepted 15\nstale 1"
     );
 }

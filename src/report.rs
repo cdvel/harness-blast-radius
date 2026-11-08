@@ -16,6 +16,17 @@ pub enum Format {
     Sarif,
 }
 
+/// Findings left out of the output, and baseline entries that matched nothing.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Counts {
+    /// Hidden by the persona.
+    pub hidden: usize,
+    /// Matched by the baseline.
+    pub accepted: usize,
+    /// Baseline entries that match no finding.
+    pub stale: usize,
+}
+
 const TOOL: &str = "harness-blast";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const RULES_URL: &str = "https://github.com/cdvel/harness-blast-radius/blob/main/docs/rules.md";
@@ -32,8 +43,8 @@ fn line(f: &Finding) -> Option<usize> {
     locate::line(f.path.as_deref()?, f.key.as_deref()?, &f.detail)
 }
 
-/// `shown` are the findings visible for the persona; `hidden` counts the rest.
-pub fn json(project: &Path, shown: &[&Finding], hidden: usize) -> String {
+/// `shown` are the findings left after the persona and any baseline.
+pub fn json(project: &Path, shown: &[&Finding], counts: Counts) -> String {
     let findings: Vec<Value> = shown
         .iter()
         .map(|f| {
@@ -55,7 +66,9 @@ pub fn json(project: &Path, shown: &[&Finding], hidden: usize) -> String {
         "version": VERSION,
         "project": project.display().to_string(),
         "findings": findings,
-        "hidden": hidden,
+        "hidden": counts.hidden,
+        "accepted": counts.accepted,
+        "stale_baseline_entries": counts.stale,
     });
     format!(
         "{}\n",

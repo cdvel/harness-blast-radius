@@ -3,6 +3,7 @@ source: tests/audit.rs
 expression: "machine(\"risky\", false)"
 ---
 {
+  "accepted": 0,
   "findings": [
     {
       "confidence": "high",
@@ -194,6 +195,7 @@ expression: "machine(\"risky\", false)"
   ],
   "hidden": 3,
   "project": "<tmp>/project",
+  "stale_baseline_entries": 0,
   "tool": "harness-blast",
   "version": "<version>"
 }

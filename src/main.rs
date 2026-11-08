@@ -1,11 +1,12 @@
 use std::path::PathBuf;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 
+use harness_blast_radius::baseline::{self, Baseline};
 use harness_blast_radius::claude;
 use harness_blast_radius::finding::Persona;
-use harness_blast_radius::report::{self, Format};
+use harness_blast_radius::report::{self, Counts, Format};
 use harness_blast_radius::style::{ColorChoice, Style};
 
 #[derive(Parser)]
@@ -58,6 +59,12 @@ enum Command {
         /// Output format
         #[arg(long, value_enum, default_value_t = Format::Text)]
         format: Format,
+        /// Leave out findings accepted in this file; it is never read unless passed
+        #[arg(long, value_name = "FILE", conflicts_with = "write_baseline")]
+        baseline: Option<PathBuf>,
+        /// Write the current findings to FILE as accepted, then exit 0
+        #[arg(long, value_name = "FILE")]
+        write_baseline: Option<PathBuf>,
         /// Exit 0 even when findings are reported
         #[arg(long)]
         no_exit_codes: bool,
@@ -88,22 +95,46 @@ fn main() -> Result<()> {
             managed_dir,
             persona,
             format,
+            baseline,
+            write_baseline,
             no_exit_codes,
         } => {
             let paths = claude::Paths::detect(&path, managed_dir)?;
             let resolved = claude::resolve(paths);
             let findings = claude::rules::check(&resolved);
             let shown: Vec<_> = findings.iter().filter(|f| f.visible(persona)).collect();
+            let display = |p: &std::path::Path| resolved.paths.display(p);
+            if let Some(file) = write_baseline {
+                std::fs::write(&file, baseline::write(&shown, &display))
+                    .with_context(|| format!("writing {}", file.display()))?;
+                eprintln!(
+                    "wrote {} finding{} to {}; add a reason to each",
+                    shown.len(),
+                    if shown.len() == 1 { "" } else { "s" },
+                    file.display()
+                );
+                return Ok(());
+            }
+            let mut counts = Counts {
+                hidden: findings.len() - shown.len(),
+                ..Counts::default()
+            };
+            let shown = match baseline {
+                Some(file) => {
+                    let applied = Baseline::load(&file)?.apply(shown, &display);
+                    counts.accepted = applied.accepted;
+                    counts.stale = applied.stale;
+                    applied.kept
+                }
+                None => shown,
+            };
             let project = &resolved.paths.project;
             match format {
                 Format::Text => print!(
                     "{}",
-                    claude::audit::render(&resolved.paths, &findings, persona, style)
+                    claude::audit::render(&resolved.paths, &shown, counts, style)
                 ),
-                Format::Json => print!(
-                    "{}",
-                    report::json(project, &shown, findings.len() - shown.len())
-                ),
+                Format::Json => print!("{}", report::json(project, &shown, counts)),
                 Format::Sarif => print!("{}", report::sarif(project, &shown)),
             }
             // Exit codes encode the highest visible severity: 11 low, 12 medium, 13 high.
