@@ -135,7 +135,7 @@ fn main() -> Result<()> {
                     claude::audit::render(&resolved.paths, &shown, counts, style)
                 ),
                 Format::Json => print!("{}", report::json(project, &shown, counts)),
-                Format::Sarif => print!("{}", report::sarif(project, &shown)),
+                Format::Sarif => print!("{}", report::sarif(&resolved.paths.repo_root(), &shown)),
             }
             // Exit codes encode the highest visible severity: 11 low, 12 medium, 13 high.
             let worst = shown.iter().map(|f| f.rule.severity).max();

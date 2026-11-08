@@ -93,7 +93,8 @@ fn security_severity(s: Severity) -> &'static str {
     }
 }
 
-pub fn sarif(project: &Path, shown: &[&Finding]) -> String {
+/// `root` is the directory result paths are relative to (`%SRCROOT%`).
+pub fn sarif(root: &Path, shown: &[&Finding]) -> String {
     let mut rules: Vec<&crate::finding::Rule> = Vec::new();
     for f in shown {
         if !rules.iter().any(|r| r.id == f.rule.id) {
@@ -127,9 +128,9 @@ pub fn sarif(project: &Path, shown: &[&Finding]) -> String {
                 "message": { "text": format!("{}: {}", f.rule.summary, f.detail) },
             });
             if let Some(path) = &f.path {
-                // Files inside the project are relative so code scanning can
+                // Files under the root are relative so code scanning can
                 // place them; user and managed files keep an absolute URI.
-                let artifact = match path.strip_prefix(project) {
+                let artifact = match path.strip_prefix(root) {
                     Ok(rel) => json!({ "uri": uri_path(rel), "uriBaseId": "%SRCROOT%" }),
                     Err(_) => json!({ "uri": format!("file://{}", uri_path(path)) }),
                 };
@@ -153,7 +154,7 @@ pub fn sarif(project: &Path, shown: &[&Finding]) -> String {
                 "rules": rule_entries,
             }},
             "originalUriBaseIds": {
-                "%SRCROOT%": { "uri": format!("file://{}/", uri_path(project)) },
+                "%SRCROOT%": { "uri": format!("file://{}/", uri_path(root)) },
             },
             "results": results,
         }],

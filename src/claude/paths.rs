@@ -55,6 +55,13 @@ impl Paths {
         }
     }
 
+    /// Directory SARIF paths are relative to: the git repository root, so
+    /// code scanning places them when a subdirectory is audited, or the
+    /// project outside a repository.
+    pub fn repo_root(&self) -> PathBuf {
+        git_root(&self.project).unwrap_or_else(|| self.project.clone())
+    }
+
     /// Shorten a path for display: `~` for home, `.` for the project.
     pub fn display(&self, path: &Path) -> String {
         if let Ok(rel) = path.strip_prefix(&self.project) {
