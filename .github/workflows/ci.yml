@@ -57,3 +57,44 @@ jobs:
         with:
           advanced-security: false
           persona: pedantic
+
+  action:
+    name: action
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup toolchain install stable --profile minimal && rustup default stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: Build and put harness-blast on PATH
+        run: |
+          cargo build --locked --release
+          echo "$PWD/target/release" >> "$GITHUB_PATH"
+      - name: Audit a risky fixture
+        id: risky
+        uses: $/
+        with:
+          path: tests/fixtures/risky/project
+          install: "false"
+          fail-on-findings: "false"
+      - name: Check findings and SARIF
+        env:
+          CODE: ${{ steps.risky.outputs.exit-code }}
+          SARIF: ${{ steps.risky.outputs.sarif-file }}
+        run: |
+          test "$CODE" = 13
+          jq -e '.runs[0].results | length > 0' "$SARIF"
+          jq -e '[.runs[0].results[].locations[0].physicalLocation.artifactLocation.uri] | all(startswith("tests/fixtures/risky/project/"))' "$SARIF"
+      - name: Accept the findings in a baseline
+        run: HOME="$RUNNER_TEMP" harness-blast audit tests/fixtures/risky/project --managed-dir "$RUNNER_TEMP/none" --write-baseline "$RUNNER_TEMP/baseline.json"
+      - name: Audit with the baseline
+        id: accepted
+        uses: $/
+        with:
+          path: tests/fixtures/risky/project
+          install: "false"
+          baseline: ${{ runner.temp }}/baseline.json
+      - run: test "$CODE" = 0
+        env:
+          CODE: ${{ steps.accepted.outputs.exit-code }}

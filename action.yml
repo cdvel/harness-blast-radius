@@ -1,0 +1,125 @@
+name: harness-blast
+description: Audit what a repository's Claude Code configuration lets Claude Code do without asking
+author: cdvel
+branding:
+  icon: shield
+  color: orange
+
+inputs:
+  path:
+    description: Project directory to audit
+    default: "."
+  persona:
+    description: regular, pedantic or auditor
+    default: regular
+  baseline:
+    description: Baseline file of accepted findings; empty for none
+    default: ""
+  sarif-file:
+    description: Where to write the SARIF report
+    default: harness-blast.sarif
+  upload-sarif:
+    description: Upload the SARIF report to GitHub code scanning (needs security-events write)
+    default: "false"
+  fail-on-findings:
+    description: Fail the step when findings remain after the baseline
+    default: "true"
+  install:
+    description: Download and verify the release binary; false uses harness-blast from PATH
+    default: "true"
+  version:
+    description: Release to install
+    default: "0.2.0"
+  token:
+    description: Token for downloading the release and its attestation
+    default: ${{ github.token }}
+
+outputs:
+  exit-code:
+    description: 0, or 11, 12 or 13 for the highest finding (low, medium, high)
+    value: ${{ steps.audit.outputs.exit-code }}
+  sarif-file:
+    description: Path of the SARIF report
+    value: ${{ inputs.sarif-file }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install harness-blast
+      id: install
+      if: inputs.install == 'true'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        VERSION: ${{ inputs.version }}
+        RUNNER_OS_NAME: ${{ runner.os }}
+        RUNNER_ARCH_NAME: ${{ runner.arch }}
+      run: |
+        set -euo pipefail
+        case "$RUNNER_OS_NAME/$RUNNER_ARCH_NAME" in
+          Linux/X64) target=x86_64-unknown-linux-musl ;;
+          Linux/ARM64) target=aarch64-unknown-linux-musl ;;
+          macOS/X64) target=x86_64-apple-darwin ;;
+          macOS/ARM64) target=aarch64-apple-darwin ;;
+          *) echo "::error::harness-blast has no binary for $RUNNER_OS_NAME/$RUNNER_ARCH_NAME"; exit 1 ;;
+        esac
+        repo=cdvel/harness-blast-radius
+        archive="harness-blast-$target.tar.gz"
+        dir="$RUNNER_TEMP/harness-blast"
+        mkdir -p "$dir"
+        gh release download "v$VERSION" --repo "$repo" --pattern "$archive" --dir "$dir" --clobber
+        # Only run a binary built from that tag by this repository's release workflow.
+        gh attestation verify "$dir/$archive" --repo "$repo" \
+          --signer-workflow "$repo/.github/workflows/release.yml" \
+          --source-ref "refs/tags/v$VERSION" > /dev/null
+        tar xzf "$dir/$archive" -C "$dir"
+        echo "bin=$dir/harness-blast-$target/harness-blast" >> "$GITHUB_OUTPUT"
+
+    - name: Audit
+      id: audit
+      shell: bash
+      env:
+        AUDIT_PATH: ${{ inputs.path }}
+        PERSONA: ${{ inputs.persona }}
+        BASELINE: ${{ inputs.baseline }}
+        SARIF_FILE: ${{ inputs.sarif-file }}
+        BIN: ${{ steps.install.outputs.bin || 'harness-blast' }}
+      run: |
+        set -uo pipefail
+        # Audit the repository alone: the runner's home and managed policy
+        # are not what the repository adds.
+        empty="$RUNNER_TEMP/harness-blast-empty"
+        mkdir -p "$empty/home" "$empty/managed"
+        unset CLAUDE_CONFIG_DIR
+        args=(audit "$AUDIT_PATH" --persona "$PERSONA" --managed-dir "$empty/managed")
+        if [ -n "$BASELINE" ]; then
+          args+=(--baseline "$BASELINE")
+        fi
+        HOME="$empty/home" "$BIN" --color always "${args[@]}"
+        code=$?
+        if [ "$code" -ne 0 ] && [ "$code" -lt 11 ]; then
+          exit "$code"
+        fi
+        HOME="$empty/home" "$BIN" "${args[@]}" --format sarif > "$SARIF_FILE"
+        sarif_code=$?
+        if [ "$sarif_code" -ne "$code" ]; then
+          echo "::error::SARIF run exited $sarif_code, text run $code"
+          exit 1
+        fi
+        echo "exit-code=$code" >> "$GITHUB_OUTPUT"
+
+    - name: Upload SARIF
+      if: inputs.upload-sarif == 'true'
+      uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+      with:
+        sarif_file: ${{ inputs.sarif-file }}
+        category: harness-blast
+
+    - name: Fail on findings
+      if: inputs.fail-on-findings == 'true' && steps.audit.outputs.exit-code != '0'
+      shell: bash
+      env:
+        CODE: ${{ steps.audit.outputs.exit-code }}
+      run: |
+        echo "::error::harness-blast found risky Claude Code settings (exit $CODE)"
+        exit "$CODE"
