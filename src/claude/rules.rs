@@ -9,7 +9,7 @@ use super::mcp::{McpScope, McpServer, McpStatus};
 use super::permission::{PathContext, PermissionRule, ToolCall};
 use super::resolve::{COMMAND_SETTINGS, Resolved, Status};
 use super::shell;
-use crate::finding::{Confidence, Finding, Persona, Rule, Severity};
+use crate::finding::{AFTER_TRUST, Confidence, Finding, Persona, Rule, Severity};
 use crate::merge::{Item, Node, SrcId};
 
 pub fn check(r: &Resolved) -> Vec<Finding> {
@@ -45,7 +45,7 @@ fn effective_srcs(r: &Resolved, item: &Item, key: &str) -> Option<(SrcId, &'stat
             Status::Ignored(_) => {}
         }
     }
-    after_trust.map(|src| (src, " (applies after workspace trust)"))
+    after_trust.map(|src| (src, AFTER_TRUST))
 }
 
 fn text(v: &Value) -> String {
@@ -352,7 +352,7 @@ fn mcp(r: &Resolved, out: &mut Vec<Finding>) {
     if let Some(leaf) = r.settings.leaf("enableAllProjectMcpServers") {
         if leaf.value == Value::Bool(true) {
             let note = if r.status(leaf.src, "permissions.allow") == Status::AfterTrust {
-                " (applies after workspace trust)"
+                AFTER_TRUST
             } else {
                 ""
             };
@@ -623,7 +623,7 @@ fn env(r: &Resolved, out: &mut Vec<Finding>) {
         }
         let note = match r.status(leaf.src, "env") {
             Status::Active => "",
-            Status::AfterTrust => " (applies after workspace trust)",
+            Status::AfterTrust => AFTER_TRUST,
             Status::Ignored(_) => continue,
         };
         let value = hide_userinfo(&text(&leaf.value));

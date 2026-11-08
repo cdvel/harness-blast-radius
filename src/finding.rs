@@ -2,6 +2,9 @@
 
 use std::path::PathBuf;
 
+/// Appended to a finding's detail when the value waits for workspace trust.
+pub const AFTER_TRUST: &str = " (applies after workspace trust)";
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Severity {
     Low,
