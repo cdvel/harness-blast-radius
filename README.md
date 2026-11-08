@@ -91,12 +91,13 @@ harness-blast why "<call>"    # allow, ask or deny, and the deciding rule
 harness-blast audit           # risky settings, highest severity first
 ```
 
-Each command takes a project directory and defaults to the current one. `why` accepts a shell command or a tool call such as `"Read(~/.ssh/id_ed25519)"`, `"WebFetch(https://docs.rs)"` or `"mcp__github__create_issue"`. `--managed-dir` tests a managed policy before you roll it out. `audit --persona pedantic` or `auditor` shows weaker signals; the exit code is 11, 12 or 13 when the highest finding is low, medium or high, and `--no-exit-codes` exits 0. `audit --format json` or `--format sarif` prints the findings with file and line, for scripts and GitHub code scanning. `audit --baseline FILE` leaves out findings you have accepted, so CI fails only on new ones.
+Each command takes a project directory and defaults to the current one. `why` accepts a shell command or a tool call such as `"Read(~/.ssh/id_ed25519)"`, `"WebFetch(https://docs.rs)"` or `"mcp__github__create_issue"`. `--managed-dir` tests a managed policy before you roll it out. `audit --persona pedantic` or `auditor` shows weaker signals; the exit code is 11, 12 or 13 when the highest finding is low, medium or high, and `--no-exit-codes` exits 0. `audit --format json` or `--format sarif` prints the findings with file and line, for scripts and GitHub code scanning. `audit --baseline FILE` leaves out findings you have accepted, so CI fails only on new ones. In GitHub Actions, `uses: cdvel/harness-blast-radius@v0.2.0` runs the audit and uploads the report to code scanning; see [docs/github-action.md](docs/github-action.md).
 
 ## Documentation
 
 - [Rules and exit codes](docs/rules.md)
 - [Claude Code behavior modeled](docs/claude-code.md)
+- [GitHub Action](docs/github-action.md)
 
 ## Name
 
