@@ -98,3 +98,13 @@ jobs:
       - run: test "$CODE" = 0
         env:
           CODE: ${{ steps.accepted.outputs.exit-code }}
+      - name: Audit with the released binary
+        id: released
+        uses: $/
+        with:
+          path: tests/fixtures/risky/project
+          fail-on-findings: "false"
+          sarif-file: ${{ runner.temp }}/released.sarif
+      - run: test "$CODE" = 13
+        env:
+          CODE: ${{ steps.released.outputs.exit-code }}
