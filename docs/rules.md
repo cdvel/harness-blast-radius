@@ -46,3 +46,12 @@ Allow and deny rules are checked with the same matcher `why` uses, not by compar
 | 13 | high |
 
 `--no-exit-codes` exits 0 whenever the audit runs.
+
+## Output formats
+
+`audit --format` takes `text` (default), `json` or `sarif`. All three show the same findings for the persona and use the same exit codes.
+
+- `json`: one object with `tool`, `version`, `project`, `hidden` (findings the persona hides) and `findings`. Each finding has `rule`, `severity`, `confidence`, `detail`, `summary`, `fix`, `path`, `key` (dotted settings key) and `line`. `path`, `key` and `line` are `null` when unknown.
+- `sarif`: SARIF 2.1.0. Files inside the project are relative to `%SRCROOT%`, the project directory; user and managed files have absolute `file://` URIs. `level` is `error`, `warning` or `note` for high, medium and low, and each rule has a `security-severity` of 8.0, 5.0 or 2.0.
+
+`line` is found by following `key` through the file, then narrowing to the array element or string the finding names. A file that is not valid JSON has no lines.
