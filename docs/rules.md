@@ -41,11 +41,12 @@ Allow and deny rules are checked with the same matcher `why` uses, not by compar
 | Code | Highest finding shown |
 |---|---|
 | 0 | none |
+| 1 | error, such as a baseline file that cannot be read |
 | 11 | low |
 | 12 | medium |
 | 13 | high |
 
-`--no-exit-codes` exits 0 whenever the audit runs.
+`--no-exit-codes` exits 0 whenever the audit runs. Findings accepted in a baseline do not count.
 
 ## Output formats
 
@@ -55,3 +56,16 @@ Allow and deny rules are checked with the same matcher `why` uses, not by compar
 - `sarif`: SARIF 2.1.0. Files inside the project are relative to `%SRCROOT%`, the project directory; user and managed files have absolute `file://` URIs. `level` is `error`, `warning` or `note` for high, medium and low, and each rule has a `security-severity` of 8.0, 5.0 or 2.0.
 
 `line` is found by following `key` through the file, then narrowing to the array element or string the finding names. A file that is not valid JSON has no lines.
+
+## Baseline
+
+A baseline lists findings you have reviewed and accepted, so CI fails only on new ones.
+
+```sh
+harness-blast audit --write-baseline .harness-blast-baseline.json   # accept everything found now
+harness-blast audit --baseline .harness-blast-baseline.json         # report only what is not in it
+```
+
+`--write-baseline` writes the findings the persona shows, each with an empty `reason` to fill in, and exits 0. An entry matches on `rule`, `path` (`./` for the project, `~/` for home), `key` and `detail`; the "applies after workspace trust" note is left out, so a baseline written in a trusted checkout also matches in CI. Accepted findings are counted in the summary and left out of JSON and SARIF findings. Entries that match nothing are reported so they can be removed. A baseline that cannot be read or parsed exits 1.
+
+The file is only read when passed with `--baseline`. `audit` never loads one from the project it audits: a repository could otherwise ship a baseline that hides its own hooks from someone deciding whether to trust it. In CI, keep the file in the repository and pass it from the workflow, so changes to it show up in review.
