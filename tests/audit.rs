@@ -1,7 +1,8 @@
 mod common;
 
 use harness_blast_radius::claude;
-use harness_blast_radius::finding::Persona;
+use harness_blast_radius::finding::{Finding, Persona};
+use harness_blast_radius::report;
 use harness_blast_radius::style::Style;
 
 fn audit(fixture: &str, persona: Persona) -> String {
@@ -14,6 +15,34 @@ fn audit(fixture: &str, persona: Persona) -> String {
             Style::PLAIN,
         )
     })
+}
+
+fn machine(fixture: &str, sarif: bool) -> String {
+    common::run(fixture, |paths| {
+        let resolved = claude::resolve(paths.clone());
+        let findings = claude::rules::check(&resolved);
+        let shown: Vec<&Finding> = findings
+            .iter()
+            .filter(|f| f.visible(Persona::Regular))
+            .collect();
+        let project = &resolved.paths.project;
+        if sarif {
+            report::sarif(project, &shown)
+        } else {
+            report::json(project, &shown, findings.len() - shown.len())
+        }
+    })
+    .replace(env!("CARGO_PKG_VERSION"), "<version>")
+}
+
+#[test]
+fn risky_json() {
+    insta::assert_snapshot!(machine("risky", false));
+}
+
+#[test]
+fn risky_sarif() {
+    insta::assert_snapshot!(machine("risky", true));
 }
 
 #[test]

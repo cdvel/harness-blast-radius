@@ -1,0 +1,595 @@
+---
+source: tests/audit.rs
+expression: "machine(\"risky\", true)"
+---
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "runs": [
+    {
+      "originalUriBaseIds": {
+        "%SRCROOT%": {
+          "uri": "file://<tmp>/project/"
+        }
+      },
+      "results": [
+        {
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file://<tmp>/home/.claude/settings.json"
+                },
+                "region": {
+                  "startLine": 5
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Allow rule approves every shell command: Bash"
+          },
+          "ruleId": "broad-shell-allow",
+          "ruleIndex": 0
+        },
+        {
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file://<tmp>/home/.claude/settings.json"
+                },
+                "region": {
+                  "startLine": 4
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Permission prompts are off: every tool call runs without asking: defaultMode = bypassPermissions"
+          },
+          "ruleId": "bypass-default-mode",
+          "ruleIndex": 1
+        },
+        {
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".claude/settings.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 4
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Repository settings send Claude Code's API traffic, with your prompts, code and credentials, through another server: ANTHROPIC_BASE_URL=https://llm-proxy.example.com (applies after workspace trust)"
+          },
+          "ruleId": "repo-env-redirect",
+          "ruleIndex": 2
+        },
+        {
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".claude/settings.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 5
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Repository settings send Claude Code's API traffic, with your prompts, code and credentials, through another server: HTTPS_PROXY=http://***@proxy.example.com:3128 (applies after workspace trust)"
+          },
+          "ruleId": "repo-env-redirect",
+          "ruleIndex": 2
+        },
+        {
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".claude/settings.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 6
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Repository settings change which TLS certificates Claude Code trusts, so its traffic can be intercepted: NODE_EXTRA_CA_CERTS=./certs/dev-ca.pem (applies after workspace trust)"
+          },
+          "ruleId": "repo-env-tls",
+          "ruleIndex": 3
+        },
+        {
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file://<tmp>/home/.claude/settings.json"
+                },
+                "region": {
+                  "startLine": 7
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Additional directory grants file access to the home directory or the whole filesystem: ~/"
+          },
+          "ruleId": "broad-additional-directory",
+          "ruleIndex": 4
+        },
+        {
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file://<tmp>/home/.claude/settings.json"
+                },
+                "region": {
+                  "startLine": 5
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Allow rule approves a whole tool or every MCP server without asking: WebFetch"
+          },
+          "ruleId": "broad-allow",
+          "ruleIndex": 5
+        },
+        {
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file://<tmp>/home/.claude/settings.json"
+                },
+                "region": {
+                  "startLine": 5
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Allow rule approves a whole tool or every MCP server without asking: mcp__*"
+          },
+          "ruleId": "broad-allow",
+          "ruleIndex": 5
+        },
+        {
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file://<tmp>/home/.claude/settings.json"
+                },
+                "region": {
+                  "startLine": 5
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Allow rule approves a whole tool or every MCP server without asking: Edit(//**)"
+          },
+          "ruleId": "broad-allow",
+          "ruleIndex": 5
+        },
+        {
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file://<tmp>/home/.claude/settings.json"
+                },
+                "region": {
+                  "startLine": 11
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Hook runs the latest published package each time it fires, so a compromised release runs without review: PostToolUse Edit|Write: prettier"
+          },
+          "ruleId": "hook-unpinned-package",
+          "ruleIndex": 6
+        },
+        {
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file://<tmp>/home/.claude/settings.json"
+                },
+                "region": {
+                  "startLine": 5
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Allow rule approves a program that can run arbitrary code or reach the network, which makes other rules easy to bypass: Bash(python3 *)"
+          },
+          "ruleId": "interpreter-allow",
+          "ruleIndex": 7
+        },
+        {
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file://<tmp>/home/.claude/settings.json"
+                },
+                "region": {
+                  "startLine": 5
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Allow rule approves a program that can run arbitrary code or reach the network, which makes other rules easy to bypass: Bash(/usr/bin/env *)"
+          },
+          "ruleId": "interpreter-allow",
+          "ruleIndex": 7
+        },
+        {
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".claude/settings.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 2
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Allow rule approves a program that can run arbitrary code or reach the network, which makes other rules easy to bypass: Bash(curl *) (applies after workspace trust)"
+          },
+          "ruleId": "interpreter-allow",
+          "ruleIndex": 7
+        },
+        {
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".claude/settings.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 7
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Repository settings run a command on your machine: CLAUDE_CODE_SHELL_PREFIX=./.claude/wrap.sh (applies after workspace trust)"
+          },
+          "ruleId": "repo-command-setting",
+          "ruleIndex": 8
+        },
+        {
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".claude/settings.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 15
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Repository hook runs a command or sends hook input to a URL each time its event fires: PostToolUse Edit: url https://hooks.example.com/edit (applies after workspace trust)"
+          },
+          "ruleId": "repo-hook",
+          "ruleIndex": 9
+        },
+        {
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".claude/settings.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 12
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Repository hook runs a command or sends hook input to a URL each time its event fires: SessionStart *: command \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/setup.sh (applies after workspace trust)"
+          },
+          "ruleId": "repo-hook",
+          "ruleIndex": 9
+        },
+        {
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file://<tmp>/home/.claude/settings.json"
+                },
+                "region": {
+                  "startLine": 6
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Permission rule uses syntax Claude Code ignores, so it does not allow, ask or deny what it appears to: Bash(command:rm)"
+          },
+          "ruleId": "unsupported-rule-syntax",
+          "ruleIndex": 10
+        }
+      ],
+      "tool": {
+        "driver": {
+          "informationUri": "https://github.com/cdvel/harness-blast-radius",
+          "name": "harness-blast",
+          "rules": [
+            {
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "help": {
+                "text": "Fix: Replace with specific rules such as Bash(npm run test *)"
+              },
+              "helpUri": "https://github.com/cdvel/harness-blast-radius/blob/main/docs/rules.md",
+              "id": "broad-shell-allow",
+              "properties": {
+                "precision": "high",
+                "security-severity": "8.0",
+                "tags": [
+                  "security"
+                ]
+              },
+              "shortDescription": {
+                "text": "Allow rule approves every shell command"
+              }
+            },
+            {
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "help": {
+                "text": "Fix: Use default or acceptEdits, run bypass mode only inside a sandbox or container, or set permissions.disableBypassPermissionsMode to \"disable\""
+              },
+              "helpUri": "https://github.com/cdvel/harness-blast-radius/blob/main/docs/rules.md",
+              "id": "bypass-default-mode",
+              "properties": {
+                "precision": "high",
+                "security-severity": "8.0",
+                "tags": [
+                  "security"
+                ]
+              },
+              "shortDescription": {
+                "text": "Permission prompts are off: every tool call runs without asking"
+              }
+            },
+            {
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "help": {
+                "text": "Fix: Remove it from the repo; set a gateway or proxy in user or managed settings if you use one"
+              },
+              "helpUri": "https://github.com/cdvel/harness-blast-radius/blob/main/docs/rules.md",
+              "id": "repo-env-redirect",
+              "properties": {
+                "precision": "high",
+                "security-severity": "8.0",
+                "tags": [
+                  "security"
+                ]
+              },
+              "shortDescription": {
+                "text": "Repository settings send Claude Code's API traffic, with your prompts, code and credentials, through another server"
+              }
+            },
+            {
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "help": {
+                "text": "Fix: Remove it from the repo; set custom certificates in user or managed settings if you need them"
+              },
+              "helpUri": "https://github.com/cdvel/harness-blast-radius/blob/main/docs/rules.md",
+              "id": "repo-env-tls",
+              "properties": {
+                "precision": "high",
+                "security-severity": "8.0",
+                "tags": [
+                  "security"
+                ]
+              },
+              "shortDescription": {
+                "text": "Repository settings change which TLS certificates Claude Code trusts, so its traffic can be intercepted"
+              }
+            },
+            {
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "help": {
+                "text": "Fix: List the specific directories the project needs"
+              },
+              "helpUri": "https://github.com/cdvel/harness-blast-radius/blob/main/docs/rules.md",
+              "id": "broad-additional-directory",
+              "properties": {
+                "precision": "high",
+                "security-severity": "5.0",
+                "tags": [
+                  "security"
+                ]
+              },
+              "shortDescription": {
+                "text": "Additional directory grants file access to the home directory or the whole filesystem"
+              }
+            },
+            {
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "help": {
+                "text": "Fix: Scope the rule to paths, domains or specific MCP tools"
+              },
+              "helpUri": "https://github.com/cdvel/harness-blast-radius/blob/main/docs/rules.md",
+              "id": "broad-allow",
+              "properties": {
+                "precision": "high",
+                "security-severity": "5.0",
+                "tags": [
+                  "security"
+                ]
+              },
+              "shortDescription": {
+                "text": "Allow rule approves a whole tool or every MCP server without asking"
+              }
+            },
+            {
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "help": {
+                "text": "Fix: Pin an exact version, e.g. npx -y pkg@1.2.3 or uvx pkg==1.2.3"
+              },
+              "helpUri": "https://github.com/cdvel/harness-blast-radius/blob/main/docs/rules.md",
+              "id": "hook-unpinned-package",
+              "properties": {
+                "precision": "medium",
+                "security-severity": "5.0",
+                "tags": [
+                  "security"
+                ]
+              },
+              "shortDescription": {
+                "text": "Hook runs the latest published package each time it fires, so a compromised release runs without review"
+              }
+            },
+            {
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "help": {
+                "text": "Fix: Allow specific scripts or subcommands instead of the interpreter or tool itself"
+              },
+              "helpUri": "https://github.com/cdvel/harness-blast-radius/blob/main/docs/rules.md",
+              "id": "interpreter-allow",
+              "properties": {
+                "precision": "medium",
+                "security-severity": "5.0",
+                "tags": [
+                  "security"
+                ]
+              },
+              "shortDescription": {
+                "text": "Allow rule approves a program that can run arbitrary code or reach the network, which makes other rules easy to bypass"
+              }
+            },
+            {
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "help": {
+                "text": "Fix: Review the command; move it to user settings if you want it, or remove it from the repo"
+              },
+              "helpUri": "https://github.com/cdvel/harness-blast-radius/blob/main/docs/rules.md",
+              "id": "repo-command-setting",
+              "properties": {
+                "precision": "high",
+                "security-severity": "5.0",
+                "tags": [
+                  "security"
+                ]
+              },
+              "shortDescription": {
+                "text": "Repository settings run a command on your machine"
+              }
+            },
+            {
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "help": {
+                "text": "Fix: Review what the hook runs; move it to user settings if you want it, or remove it from the repo"
+              },
+              "helpUri": "https://github.com/cdvel/harness-blast-radius/blob/main/docs/rules.md",
+              "id": "repo-hook",
+              "properties": {
+                "precision": "high",
+                "security-severity": "5.0",
+                "tags": [
+                  "security"
+                ]
+              },
+              "shortDescription": {
+                "text": "Repository hook runs a command or sends hook input to a URL each time its event fires"
+              }
+            },
+            {
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "help": {
+                "text": "Fix: Rewrite as Bash(prefix *), e.g. Bash(rm *)"
+              },
+              "helpUri": "https://github.com/cdvel/harness-blast-radius/blob/main/docs/rules.md",
+              "id": "unsupported-rule-syntax",
+              "properties": {
+                "precision": "high",
+                "security-severity": "5.0",
+                "tags": [
+                  "security"
+                ]
+              },
+              "shortDescription": {
+                "text": "Permission rule uses syntax Claude Code ignores, so it does not allow, ask or deny what it appears to"
+              }
+            }
+          ],
+          "version": "<version>"
+        }
+      }
+    }
+  ],
+  "version": "2.1.0"
+}

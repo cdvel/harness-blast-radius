@@ -5,6 +5,7 @@ use clap::{Parser, Subcommand};
 
 use harness_blast_radius::claude;
 use harness_blast_radius::finding::Persona;
+use harness_blast_radius::report::{self, Format};
 use harness_blast_radius::style::{ColorChoice, Style};
 
 #[derive(Parser)]
@@ -54,6 +55,9 @@ enum Command {
         /// How much to report
         #[arg(long, value_enum, default_value_t = Persona::Regular)]
         persona: Persona,
+        /// Output format
+        #[arg(long, value_enum, default_value_t = Format::Text)]
+        format: Format,
         /// Exit 0 even when findings are reported
         #[arg(long)]
         no_exit_codes: bool,
@@ -83,21 +87,27 @@ fn main() -> Result<()> {
             path,
             managed_dir,
             persona,
+            format,
             no_exit_codes,
         } => {
             let paths = claude::Paths::detect(&path, managed_dir)?;
             let resolved = claude::resolve(paths);
             let findings = claude::rules::check(&resolved);
-            print!(
-                "{}",
-                claude::audit::render(&resolved.paths, &findings, persona, style)
-            );
+            let shown: Vec<_> = findings.iter().filter(|f| f.visible(persona)).collect();
+            let project = &resolved.paths.project;
+            match format {
+                Format::Text => print!(
+                    "{}",
+                    claude::audit::render(&resolved.paths, &findings, persona, style)
+                ),
+                Format::Json => print!(
+                    "{}",
+                    report::json(project, &shown, findings.len() - shown.len())
+                ),
+                Format::Sarif => print!("{}", report::sarif(project, &shown)),
+            }
             // Exit codes encode the highest visible severity: 11 low, 12 medium, 13 high.
-            let worst = findings
-                .iter()
-                .filter(|f| f.visible(persona))
-                .map(|f| f.rule.severity)
-                .max();
+            let worst = shown.iter().map(|f| f.rule.severity).max();
             if let (Some(sev), false) = (worst, no_exit_codes) {
                 std::process::exit(sev.exit_code());
             }

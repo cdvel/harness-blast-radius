@@ -6,5 +6,7 @@
 
 pub mod claude;
 pub mod finding;
+pub mod locate;
 pub mod merge;
+pub mod report;
 pub mod style;
