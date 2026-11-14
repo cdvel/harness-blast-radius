@@ -1,112 +1,176 @@
+<div align="center">
+
 # harness-blast-radius
 
-[![CI](https://github.com/cdvel/harness-blast-radius/actions/workflows/ci.yml/badge.svg)](https://github.com/cdvel/harness-blast-radius/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/cdvel/harness-blast-radius)](https://github.com/cdvel/harness-blast-radius/releases/latest) ![License: MIT](https://img.shields.io/badge/license-MIT-blue) ![Rust 1.85+](https://img.shields.io/badge/rust-1.85%2B-orange)
+**Reports what a coding agent's configuration lets it do without asking, and the file that allows it.**
 
-**A static analyzer for Claude Code configuration: what it can do without asking, and which file allowed it.**
+Rust 1.85+ · Linux and macOS · MIT license · supports Claude Code; Codex and Cursor not yet; plugin contents are not read
 
-Rust 1.85+ · Linux and macOS · MIT license · Claude Code supported; Codex and Cursor not yet
+[![CI](https://github.com/cdvel/harness-blast-radius/actions/workflows/ci.yml/badge.svg)](https://github.com/cdvel/harness-blast-radius/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/cdvel/harness-blast-radius)](https://github.com/cdvel/harness-blast-radius/releases/latest)
+
+[Uses](#uses) · [Install](#install) · [Commands](#commands) · [Tests](#tests) · [Architecture](docs/ARCHITECTURE.md) · [Rules](docs/rules.md)
+
+</div>
 
 ![harness-blast audit reporting a hook that pipes a download into sh, a plaintext MCP credential, an interpreter allow rule and a repository hook](docs/audit.svg)
 
-> You clone a repository, open Claude Code, and it asks whether you trust the folder. If you say yes, the repository's settings take effect: a hook in them can run a downloaded script every time a session starts, and an allow rule such as `Bash(python3 *)` lets Python read the `.env` file those settings deny to Claude Code's file tools.
+You clone a repository, open Claude Code, and it asks whether you trust the folder. If you say yes, the repository's settings take effect. A hook in them can run a downloaded script every time a session starts. An allow rule such as `Bash(python3 *)` lets Python read the `.env` file the same settings deny to Claude Code's file tools. No single settings file tells you this, because rules merge across files and some only apply after you trust the folder.
 
-`harness-blast-radius` shows what that adds up to. It reads every file Claude Code reads (managed policy, your user settings, the project's `.claude/` and `.mcp.json`, `~/.claude.json`) and reports what Claude Code can run, read, edit and fetch without asking. It only reads files; nothing is executed.
+`harness-blast-radius` reads every file Claude Code reads, merges them the way Claude Code does, and reports what it can run, read, edit and fetch without asking. The harness is the program that runs the model's tool calls. The blast radius is how far its configuration lets it reach: `audit` reports that, and `why` traces one call to the rule that lets it through. It only reads files; nothing is executed.
 
-## Public repositories
+> [!IMPORTANT]
+> Every command runs over one resolved configuration: scopes merged, workspace trust applied, ignored values dropped, permission rules matched as Claude Code matches them. A finding names the file it came from.
 
-In October 2026, a GitHub code search for `.claude/settings.json` files with a `permissions` key returned 60 repositories. Running `harness-blast audit` on them:
+```mermaid
+flowchart LR
+  files["config files"] -- read --> resolved["resolved configuration"]
+  resolved --> show
+  resolved --> why
+  resolved --> audit
+  baseline -. filters .-> audit
+  audit --> text
+  audit --> json
+  audit --> sarif
+```
 
-- 3 approve every shell command once the folder is trusted
-- 12 approve an interpreter or network tool such as `python *`, `npx:*`, `node:*`, `curl:*` or `xargs:*`, which run arbitrary code or reach the network
-- 12 define hooks that run commands at session start, before tool calls or when Claude Code stops
-- 2 approve every MCP server their `.mcp.json` defines
-- 1 has a trailing comma, so Claude Code ignores the whole file, deny rules included
+## Uses
 
-## What it checks
+- **Decide whether to trust a cloned repository.** Run `audit` before you answer the trust prompt.
+- **Gate pull requests.** Fail CI when a change adds a hook, a broad allow rule or a plaintext MCP credential; the exit code is 11, 12 or 13 for low, medium or high.
+- **Test a managed policy.** Point `--managed-dir` at a policy before you roll it out.
+- **Find why a call is allowed.** `why` names the rule and file that decide it.
 
-- **Permissions:** allow rules that approve every shell command, an interpreter, a whole tool or every MCP server; modes that turn prompts off; rule syntax Claude Code ignores
-- **Hooks:** repository hooks, downloads piped into a shell, unpinned `npx` and `uvx` packages
-- **Environment:** repository `env` that sends API traffic through another server (`ANTHROPIC_BASE_URL`, `HTTPS_PROXY`), changes certificate checks, or wraps every shell command
-- **MCP servers:** plaintext credentials (names only, never values), unpinned packages, plain `http`, project servers approved without review
-- **Config files:** files Claude Code does not load, values ignored in the scope they are written in, repository settings that run commands such as `apiKeyHelper`
-- **Sandbox:** sandbox off, excluded commands, unsandboxed retries and fallback
-- **Local state:** prompt history, credentials and `~/.claude.json` readable by other users
+In October 2026 a GitHub code search for `.claude/settings.json` files with a `permissions` key returned 60 repositories. `harness-blast audit` on them reported that 3 approve every shell command once trusted, 12 approve an interpreter or network tool such as `python *` or `curl:*`, 12 define hooks, 2 approve every MCP server their `.mcp.json` defines, and 1 has a trailing comma, so Claude Code ignores the whole file, deny rules included.
 
-Each rule, its severity and the exit codes are in [docs/rules.md](docs/rules.md).
-
-## Example
-
-1. You clone `acme-api`. Before answering the trust prompt, you run `harness-blast audit` and get the four findings at the top of this page.
-2. Trusting the folder would run that script at the start of every session.
-3. The repository denies `Read(.env)`, which stops Claude Code's file tools:
-
-   ```console
-   $ harness-blast why "Read(.env)"
-   Read(.env)
-     deny
-       Read(.env)  project ./.claude/settings.json
-   ```
-
-4. `why` shows the same file read through Python asks today, and would be approved once the folder is trusted:
-
-   ```console
-   $ harness-blast why "python3 -c 'print(open(\".env\").read())'"
-   python3 -c 'print(open(".env").read())'
-     no rule matches: Claude Code asks (default mode)
-   ...
-     after workspace trust, these repo rules would also apply:
-       Bash(python3 *) (allow)  project ./.claude/settings.json
-   ```
-
-5. You open the session without trusting the folder, or remove the hook and narrow `Bash(python3 *)` first. In CI, the same audit exits 13 and fails the pull request that added them.
-
-## How it differs
-
-A single settings file does not tell you what Claude Code will do. `harness-blast-radius` merges every scope, applies workspace trust, drops the values Claude Code ignores, and evaluates permission rules with Claude Code's matching (compound commands, wrappers, path anchors) rather than comparing rule text: `Bash(python3 manage.py test)` is not reported as an interpreter allow, `Bash(/usr/bin/env *)` is. Every finding names the rule and the file it came from.
-
-## Installation
-
-Download the binary for your platform from the [latest release](https://github.com/cdvel/harness-blast-radius/releases/latest) (`x86_64` or `aarch64`, `unknown-linux-musl` or `apple-darwin`) and put it on your `PATH`:
+## Install
 
 ```sh
 curl -fsSLO https://github.com/cdvel/harness-blast-radius/releases/latest/download/harness-blast-x86_64-unknown-linux-musl.tar.gz
 tar xzf harness-blast-x86_64-unknown-linux-musl.tar.gz
 install harness-blast-x86_64-unknown-linux-musl/harness-blast ~/.local/bin/
-harness-blast --version
 ```
 
-Linux binaries are static. macOS binaries are not notarized; if you downloaded the archive with a browser, run `xattr -d com.apple.quarantine harness-blast` before the first run. Each archive has a build provenance attestation; `gh attestation verify <archive> --repo cdvel/harness-blast-radius` checks it was built by this repository's release workflow.
-
-To build from source instead (Rust 1.85+):
+Other targets are `aarch64-unknown-linux-musl`, `x86_64-apple-darwin` and `aarch64-apple-darwin`. From source with Rust 1.85+: `cargo install --locked --git https://github.com/cdvel/harness-blast-radius`.
 
 ```sh
-cargo install --locked --git https://github.com/cdvel/harness-blast-radius
+harness-blast show                     # what Claude Code would load, and from which file
+harness-blast why "Read(~/.ssh/id_ed25519)"   # allow, ask or deny, and the deciding rule
+harness-blast audit --format sarif     # risky settings for GitHub code scanning
 ```
 
-## Usage
+> [!TIP]
+> `harness-blast show` lists the files it loaded under Sources, or `none found`. On macOS, run `xattr -d com.apple.quarantine harness-blast` once if you downloaded the archive in a browser. `gh attestation verify <archive> --repo cdvel/harness-blast-radius` checks it was built by this repository's release workflow.
 
-```sh
-harness-blast show            # effective configuration and the source of every value
-harness-blast why "<call>"    # allow, ask or deny, and the deciding rule
-harness-blast audit           # risky settings, highest severity first
+## Commands
+
+Each takes a project directory, default the current one. `why` is the exception: it takes the call first and the directory as `--path`.
+
+### show
+
+Prints the effective configuration: sources, workspace trust, permissions, hooks, MCP servers, command settings, `env`, sandbox, plugins, and values Claude Code ignores. Every value carries its scope, and `(after trust)` marks repository values that wait for the trust dialog.
+
+<details>
+<summary><b>Example:</b> a merged configuration</summary>
+
+```console
+Sources
+  user     ~/.claude/settings.json
+  project  ./.claude/settings.json
+  local    ./.claude/settings.local.json
+  state    ~/.claude.json
+
+Workspace trust: not accepted: repo allow rules, env and hooks wait for the trust dialog
+...
+  allow
+    Bash(git status)          user, project
+    Bash(npm run *)           project  (after trust)
 ```
 
-Each command takes a project directory and defaults to the current one. `why` accepts a shell command or a tool call such as `"Read(~/.ssh/id_ed25519)"`, `"WebFetch(https://docs.rs)"` or `"mcp__github__create_issue"`. `--managed-dir` tests a managed policy before you roll it out. `audit --persona pedantic` or `auditor` shows weaker signals; the exit code is 11, 12 or 13 when the highest finding is low, medium or high, and `--no-exit-codes` exits 0. `audit --format json` or `--format sarif` prints the findings with file and line, for scripts and GitHub code scanning. `audit --baseline FILE` leaves out findings you have accepted, so CI fails only on new ones. In GitHub Actions, `uses: cdvel/harness-blast-radius@v0.2.0` runs the audit and uploads the report to code scanning; see [docs/github-action.md](docs/github-action.md).
+From [`tests/snapshots/show__merge.snap`](tests/snapshots/show__merge.snap).
 
-## Documentation
+</details>
 
-- [Rules and exit codes](docs/rules.md)
-- [Claude Code behavior modeled](docs/claude-code.md)
-- [GitHub Action](docs/github-action.md)
+### why
 
-## Name
+Evaluates one shell command or tool call with Claude Code's matching: compound commands are split, wrappers such as `timeout` are stripped, deny and ask rules also see commands inside `$(...)`, and an allow rule must cover every part. It also lists repository rules that would apply after trust.
 
-- **Harness:** the program that runs a model's tool calls on your machine. Claude Code is the one supported; `show` prints its effective configuration.
-- **Blast radius:** in incident response, everything a compromised component can reach. Here it is what the harness may run, read, edit or fetch without asking: `audit` reports how far it extends, and `why` traces one call to the rule that lets it through.
+<details>
+<summary><b>Example:</b> a call allowed today by a user rule, widened after trust</summary>
 
-## Status
+```console
+curl https://example.com
+  allow
+    Bash  user ~/.claude/settings.json  for: curl https://example.com
+  after workspace trust, these repo rules would also apply:
+    Bash(curl *) (allow)  project ./.claude/settings.json
+```
 
-Early. Claude Code only; Codex and Cursor are planned. Plugin contents are not read yet.
+From [`tests/snapshots/decide__why_after_trust.snap`](tests/snapshots/decide__why_after_trust.snap).
+
+</details>
+
+### audit
+
+Reports risky settings, highest severity first: broad or interpreter allow rules, prompt-free modes, repository hooks and `env` redirects, MCP servers with plaintext credentials or unpinned packages, files Claude Code does not load, sandbox gaps and state files readable by other users. A baseline of reviewed findings makes CI fail only on new ones, and is read only when passed with `--baseline`, never from the audited project.
+
+<details>
+<summary><b>Options</b></summary>
+
+| Option | Effect |
+|---|---|
+| `--persona regular\|pedantic\|auditor` | `regular` shows findings worth acting on; the others add weaker signals |
+| `--format text\|json\|sarif` | Output format; JSON and SARIF include file and line |
+| `--baseline FILE` | Leave out findings accepted in FILE |
+| `--write-baseline FILE` | Write current findings to FILE as accepted, then exit 0 |
+| `--no-exit-codes` | Exit 0 even when findings are reported |
+| `--managed-dir DIR` | Directory with `managed-settings.json` and `managed-mcp.json` |
+
+The 29 rules and the exit codes are in [`docs/rules.md`](docs/rules.md).
+
+</details>
+
+<details>
+<summary><b>Example:</b> one finding from the risky test fixture</summary>
+
+```console
+high    repo-env-redirect  ANTHROPIC_BASE_URL=https://llm-proxy.example.com (applies after workspace trust)
+        at ./.claude/settings.json  env.ANTHROPIC_BASE_URL
+        Repository settings send Claude Code's API traffic, with your prompts, code and credentials, through another server
+        fix: Remove it from the repo; set a gateway or proxy in user or managed settings if you use one
+...
+```
+
+From [`tests/snapshots/audit__risky_regular.snap`](tests/snapshots/audit__risky_regular.snap).
+
+</details>
+
+### GitHub Action
+
+Installs the release binary after checking its build attestation, audits the repository with an empty home and managed directory, and can upload SARIF to code scanning.
+
+<details>
+<summary><b>Example:</b> a workflow</summary>
+
+```yaml
+- uses: cdvel/harness-blast-radius@v0.2.0 # pin to the release commit SHA
+  with:
+    baseline: .harness-blast-baseline.json
+    upload-sarif: "true"
+```
+
+Inputs and behavior: [`docs/github-action.md`](docs/github-action.md).
+
+</details>
+
+## Tests
+
+43 tests: 25 unit tests and 18 integration tests that run the commands over fixture trees standing in for a machine. Output is checked against snapshots in [`tests/snapshots`](tests/snapshots). CI runs them on Linux and macOS with stable Rust and 1.85.
+
+## Background
+
+- [Claude Code documentation](https://code.claude.com/docs) on settings, permissions, hooks and MCP, which the matching rules follow (modeled behavior: [`docs/claude-code.md`](docs/claude-code.md))
+- [SARIF 2.1.0](https://json.schemastore.org/sarif-2.1.0.json), the format of `audit --format sarif`
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [decision records](docs/adr/README.md) and [glossary](docs/GLOSSARY.md)
 
 ## License
 
