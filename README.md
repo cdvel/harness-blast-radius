@@ -21,18 +21,6 @@ You clone a repository, open Claude Code, and it asks whether you trust the fold
 > [!IMPORTANT]
 > Every command runs over one resolved configuration: scopes merged, workspace trust applied, ignored values dropped, permission rules matched as Claude Code matches them. A finding names the file it came from.
 
-```mermaid
-flowchart LR
-  files["config files"] -- read --> resolved["resolved configuration"]
-  resolved --> show
-  resolved --> why
-  resolved --> audit
-  baseline -. filters .-> audit
-  audit --> text
-  audit --> json
-  audit --> sarif
-```
-
 ## Uses
 
 - **Decide whether to trust a cloned repository.** Run `audit` before you answer the trust prompt.
@@ -165,12 +153,6 @@ Inputs and behavior: [`docs/github-action.md`](docs/github-action.md).
 ## Tests
 
 43 tests: 25 unit tests and 18 integration tests that run the commands over fixture trees standing in for a machine. Output is checked against snapshots in [`tests/snapshots`](tests/snapshots). CI runs them on Linux and macOS with stable Rust and 1.85.
-
-## Background
-
-- [Claude Code documentation](https://code.claude.com/docs) on settings, permissions, hooks and MCP, which the matching rules follow (modeled behavior: [`docs/claude-code.md`](docs/claude-code.md))
-- [SARIF 2.1.0](https://json.schemastore.org/sarif-2.1.0.json), the format of `audit --format sarif`
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [decision records](docs/adr/README.md) and [glossary](docs/GLOSSARY.md)
 
 ## License
 
