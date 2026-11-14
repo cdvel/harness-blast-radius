@@ -1,7 +1,7 @@
 ---
 id: ADR-0001
 title: Resolve configuration before judging it
-status: Draft
+status: Accepted
 status_note: ""
 date: 2026-11-14
 revised: []
@@ -18,7 +18,7 @@ terms:
 
 # ADR-0001: Resolve configuration before judging it
 
-**Status:** Draft · **Date:** 2026-11-14
+**Status:** Accepted · **Date:** 2026-11-14
 
 ## Context
 

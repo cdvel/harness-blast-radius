@@ -1,7 +1,7 @@
 ---
 id: ADR-0004
 title: Audit the repository alone in CI with an attested binary
-status: Draft
+status: Accepted
 status_note: ""
 date: 2026-11-14
 revised: []
@@ -18,7 +18,7 @@ terms: []
 
 # ADR-0004: Audit the repository alone in CI with an attested binary
 
-**Status:** Draft · **Date:** 2026-11-14
+**Status:** Accepted · **Date:** 2026-11-14
 
 ## Context
 

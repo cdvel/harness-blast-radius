@@ -4,10 +4,12 @@ This file is the project's current vocabulary: each term has one definition and 
 
 | Term | Definition | Source |
 |---|---|---|
+| Resolved configuration | The settings, MCP servers and trust state merged across all sources with provenance, which every command reads. | [ADR-0001](adr/0001-resolve-configuration-before-judging-it.md) |
+| Probe | A synthetic tool call used to test whether an allow rule is broad, instead of reading its text. | [ADR-0002](adr/0002-judge-allow-rules-with-probes.md) |
+| Baseline | A file of reviewed findings passed with `--baseline` so only new findings fail; it is never read from the audited project. | [ADR-0003](adr/0003-never-load-a-baseline-from-the-audited-project.md) |
 | Adapter | The module that reads and resolves one harness's configuration; `claude` is the only one so far. | Convention |
 | After trust | The status of a repository value that is present but not yet applied because the folder is not trusted. | Convention |
 | Audit rule | A check with an id, severity, confidence, persona, summary and fix that produces findings. | Convention |
-| Baseline | A file of reviewed findings passed with `--baseline` so only new findings fail; it is never read from the audited project. | Convention |
 | Blast radius | What a harness may run, read, edit or fetch without asking, as its configuration allows. | Convention |
 | Finding | One reported instance of an audit rule, with its detail and the file and key it came from. | Convention |
 | Harness | The program that runs a model's tool calls on the user's machine; Claude Code is the only one supported so far. | Convention |
@@ -16,8 +18,6 @@ This file is the project's current vocabulary: each term has one definition and 
 | Managed policy | Settings and MCP files in the system location that override every other scope. | Convention |
 | Permission rule | An allow, ask or deny entry such as `Bash(npm run *)` in `permissions`. | Convention |
 | Persona | The audience that sets how much `audit` shows: regular, pedantic or auditor. | Convention |
-| Probe | A synthetic tool call used to test whether an allow rule is broad, instead of reading its text. | Convention |
-| Resolved configuration | The settings, MCP servers and trust state merged across all sources with provenance, which every command reads. | Convention |
 | Scope | Where a settings file sits in Claude Code's precedence order: user, project, local or managed (MCP servers use their own order: managed, local, project, user). | Convention |
 | Shadowed | A value from a lower-precedence source that a higher one replaced, which the merge keeps a record of. | Convention |
 | Source | One config file that was loaded, with its scope, kind and path, which every merged value points back to. | Convention |

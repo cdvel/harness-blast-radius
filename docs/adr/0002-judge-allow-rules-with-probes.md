@@ -1,7 +1,7 @@
 ---
 id: ADR-0002
 title: Judge allow rules with probe calls and the shared matcher
-status: Draft
+status: Accepted
 status_note: ""
 date: 2026-11-14
 revised: []
@@ -19,7 +19,7 @@ terms:
 
 # ADR-0002: Judge allow rules with probe calls and the shared matcher
 
-**Status:** Draft · **Date:** 2026-11-14
+**Status:** Accepted · **Date:** 2026-11-14
 
 ## Context
 
